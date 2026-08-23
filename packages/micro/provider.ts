@@ -1,25 +1,22 @@
 import type { DynamicClassProvider, DynamicFactoryProvider, DynamicProvider, DynamicValueProvider, Provider, ProviderToken } from "./interface/index.js";
-
-function objectHasProperty<T extends object, K extends PropertyKey>(value: T, property: K): value is (T & {[P in K]: unknown}) {
-  return Object.prototype.hasOwnProperty.call(value, property);
-}
+import { hasOwnProperty } from "./internal.js";
 
 export function isDynamicClassProvider(provider: Provider): provider is DynamicClassProvider {
   if (typeof provider !== "object") return false;
-  if (!objectHasProperty(provider, 'for')) return false;
-  return objectHasProperty(provider, 'useClass');
+  if (!hasOwnProperty(provider, 'for')) return false;
+  return hasOwnProperty(provider, 'useClass');
 }
 
 export function isDynamicValueProvider(provider: Provider): provider is DynamicValueProvider {
   if (typeof provider !== "object") return false;
-  if (!objectHasProperty(provider, 'for')) return false;
-  return objectHasProperty(provider, 'useValue');
+  if (!hasOwnProperty(provider, 'for')) return false;
+  return hasOwnProperty(provider, 'useValue');
 }
 
 export function isDynamicFactoryProvider(provider: Provider): provider is DynamicFactoryProvider {
   if (typeof provider !== "object") return false;
-  if (!objectHasProperty(provider, 'for')) return false;
-  return objectHasProperty(provider, 'useFactory');
+  if (!hasOwnProperty(provider, 'for')) return false;
+  return hasOwnProperty(provider, 'useFactory');
 }
 
 export function isDynamicProvider(provider: Provider): provider is DynamicProvider {

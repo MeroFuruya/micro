@@ -22,11 +22,20 @@ export function getCurrentInjector(): Injector {
 }
 
 export function runInInjectionContext<R>(injector: Injector, callback: () => R): R {
+  let previousInjector: Injector | undefined;
+  if (hasCurrentInjector()) {
+    previousInjector= getCurrentInjector();
+    unsetCurrentInjector();
+  }
+  
   setCurrentInjector(injector);
   try {
     return callback();
   } finally {
     unsetCurrentInjector();
+    if (previousInjector !== undefined) {
+      setCurrentInjector(previousInjector);
+    }
   }
 }
 
@@ -37,7 +46,6 @@ export function assertInjectionContext() {
 
 export function inject<T>(token: Type<T>): T;
 export function inject<T = unknown>(injectionToken: symbol): T;
-
 export function inject<T>(token: ProviderToken): T {
   assertInjectionContext();
   const injector = getCurrentInjector();

@@ -1,6 +1,7 @@
 import { runInInjectionContext } from "./inject.js";
 import { Injector } from "./injector.js";
-import type { Module, Provider, ProviderInstance, ProviderToken } from "./interface/index.js";
+import type { AsyncHookName, Module, Provider, ProviderInstance, ProviderToken } from "./interface/index.js";
+import { hasOwnProperty } from "./internal.js";
 import { type ModuleDefinitionStore } from "./moduleDefinition.js";
 import { isDynamicClassProvider, isDynamicFactoryProvider, isDynamicProvider, isDynamicValueProvider, providerIsToken } from "./provider.js";
 
@@ -41,17 +42,49 @@ class InstanceMap {
     const instances = instanceMap.get(token)!;
     return instances;
   }
+
+  public* allInstances(): IterableIterator<[Module, ProviderToken, ProviderInstance]> {
+    for (const [module, instanceMap] of this.map.entries()) {
+      for (const [token, instances] of instanceMap.entries()) {
+        for (const instance of instances) {
+          yield [module, token, instance];
+        }
+      }
+    }
+  }
+}
+
+class WeakModuleTokenMap {
+  private map = new WeakMap<Module, WeakSet<ProviderToken>>()
+
+  set(module: Module, token: ProviderToken) {
+    if (!this.map.has(module)) {
+      this.map.set(module, new Set());
+    }
+    const tokenSet = this.map.get(module)!;
+    return tokenSet.has(token);
+  }
+  
+  has(module: Module, token: ProviderToken): boolean {
+    if (!this.map.has(module)) return false;
+    const tokenSet = this.map.get(module)!;
+    return tokenSet.has(token);
+  }
+  
+  del(module: Module, token: ProviderToken) {
+    if (!this.map.has(module)) return;
+    const tokenSet = this.map.get(module)!;
+    return tokenSet.has(token);
+  }
 }
 
 export class Application {
   constructor(
     readonly moduleStore: ModuleDefinitionStore,
-    readonly module: Module
   ) {}
 
   private injectorMap = new WeakMap<Module, Injector>();
-  getInjector(module?: Module): Injector {
-    module ??= this.module;
+  getInjector(module: Module): Injector {
     if (!this.injectorMap.has(module)) {
       const injector = new Injector(this, module);
       this.injectorMap.set(module, injector);
@@ -64,12 +97,19 @@ export class Application {
   isProviderBootstrapped(module: Module, token: ProviderToken): boolean {
     return this.instanceMap.hasToken(module, token);
   }
-
+  
+  private readonly currentlyBootstrappingProviderMap = new WeakModuleTokenMap();
   bootstrapProvider(module: Module, token: ProviderToken) {
-    if (!this.isProviderBootstrapped(module, token)) throw new Error("Providers cannot be bootstrapped twice");
+    if (this.isProviderBootstrapped(module, token)) throw new Error("Providers cannot be bootstrapped twice");
+
+    if (this.currentlyBootstrappingProviderMap.has(module, token)) {
+      throw new Error(`Recursive dependency inside module ${String(module)}`)
+    }
 
     const providers = this.moduleStore.getModuleProviders(module);
 
+    this.currentlyBootstrappingProviderMap.set(module, token);
+    
     for (const provider of providers) {
       if (!providerIsToken(provider, token)) continue;
 
@@ -79,10 +119,11 @@ export class Application {
       }
       
       if (isDynamicClassProvider(provider)) {
+        
         const injector = this.getInjector(module);
-
         const value = runInInjectionContext(injector, () => new provider.useClass())
         this.instanceMap.addInstance(module, token, value);
+        
         continue;
       }
       
@@ -97,6 +138,8 @@ export class Application {
       const value = runInInjectionContext(injector, () => new provider())
       this.instanceMap.addInstance(module, token, value);
     }
+    
+    this.currentlyBootstrappingProviderMap.del(module, token);
   }
 
   getInstances(module: Module, token: ProviderToken): ReadonlyArray<ProviderInstance> {
@@ -122,5 +165,37 @@ export class Application {
       if (this.isProviderBootstrapped(module, token)) continue;
       this.bootstrapProvider(module, token);
     }
+  }
+
+  bootstrap(module: Module) {
+    const waitingModules = this.moduleStore.getModulesInTree(module);
+    while (waitingModules.size > 0) {
+      for (const module of waitingModules.values()) {
+        const moduleImports = this.moduleStore.getModuleImports(module);
+        const allImportsReady = moduleImports.every((moduleImport) => !waitingModules.has(moduleImport));
+        if (!allImportsReady) continue;
+
+        this.bootstrapModule(module);
+        waitingModules.delete(module);
+      }
+    }
+  }
+
+  async runAsyncHook(name: AsyncHookName) {
+    for (const [module, token, instance] of this.instanceMap.allInstances()) {
+      if (typeof instance !== 'object') continue;
+      if (!hasOwnProperty(instance, name)) continue;
+      const callback: unknown = instance[name];
+      if (typeof callback !== 'function') continue;
+      await callback.call(instance);
+    }
+  }
+
+  async start() {
+    await this.runAsyncHook('onApplicationStart')
+  }
+  
+  async stop() {
+    await this.runAsyncHook('onApplicationStop')
   }
 }
