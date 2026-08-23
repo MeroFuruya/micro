@@ -63,9 +63,13 @@ export class Injector {
     }
     
     if (strategy === InjectorStrategy.AnyExported) {
+      // TODO: Implement
+      throw new Error("Not implemented");
     }
     
     if (strategy === InjectorStrategy.AnyProvided) {
+      // TODO: Implement
+      throw new Error("Not implemented");
     }
 
     return [];
@@ -84,13 +88,5 @@ export class Injector {
 
     throw new Error(`Instance for provider ${getTokenName(token)} could not be found.`)
   }
-
-  // getFromModule<T extends any, S = ProviderToken>(module: Module, token: T | S, options: InjectorOptions): T {
-  //   for (const source of options.source) {
-  //     if (source === ProviderSources.CurrentExported) {
-  //       this.application.getInstance(module, token);
-  //     }
-  //   }
-  // }
 }
 
