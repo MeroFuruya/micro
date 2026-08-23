@@ -1,0 +1,23 @@
+{
+  "name": "micro",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MeroFuruya/micro.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/MeroFuruya/micro/issues"
+  },
+  "homepage": "https://github.com/MeroFuruya/micro#readme",
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}
