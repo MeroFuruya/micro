@@ -71,6 +71,22 @@ export class ModuleDefinitionStore {
     return this.getDefinition(module).export ?? [];
   }
 
+  getModulesInTree(module: Module): Set<Module> {
+    const modules = new Set<Module>();
+
+    const visit = (current: Module) => {
+      if (modules.has(current)) return;
+      modules.add(current);
+      for (const importedModule of this.getModuleImports(current)) {
+        visit(importedModule);
+      }
+    };
+
+    visit(module);
+    
+    return modules;
+  }
+
   // detectCircularImports(module: Module, seen?: ReadonlyArray<Module>): ReadonlyArray<Module>[] {
   //   seen ??= [];
   //   const imports = this.getModuleImports(module);

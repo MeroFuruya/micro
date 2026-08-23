@@ -10,28 +10,14 @@ export async function bootstrapApplication(moduleDefinitionStore: ModuleDefiniti
 
   const application = new Application(moduleDefinitionStore, module);
 
-  const waitingModules = new Set(moduleDefinitionStore.getModules());
+  const waitingModules = moduleDefinitionStore.getModulesInTree(module);
   while (waitingModules.size > 0) {
     for (const module of waitingModules.values()) {
       const moduleImports = moduleDefinitionStore.getModuleImports(module);
       const allImportsReady = moduleImports.every((moduleImport) => !waitingModules.has(moduleImport));
       if (!allImportsReady) continue;
-
-      bootstrapModule(application, module);
     }
   }
 
   return application;
-}
-
-export async function bootstrapModule(application: Application, module: Module) {
-  application.
-}
-
-export function bootstrapProvider(application: Application, module: Module, providerToken: ProviderToken): ProviderInstance {
-  const getModuleProviders = application.moduleStore.getModuleProviders(module);
-
-  const injector = application.getInjector(module);
-  
-  
 }
