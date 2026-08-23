@@ -87,6 +87,30 @@ export class ModuleDefinitionStore {
     return modules;
   }
 
+  getTokenExporter(module: Module, token: ProviderToken): Module | null {
+    const currentlyVisitingModules = new Set<Module>([module]);
+    const visitedModules = new Set<Module>();
+
+    while (currentlyVisitingModules.size > 0) {
+      for (const visitModule of currentlyVisitingModules) {
+        currentlyVisitingModules.delete(visitModule);
+        visitedModules.add(visitModule);
+
+        const moduleExports = this.getModuleExports(visitModule);
+        
+        for (const moduleExport of moduleExports) {
+          if (moduleExport === token) return visitModule;
+
+          if (typeof moduleExport === 'symbol' && this.hasModule(moduleExport)) {
+            currentlyVisitingModules.add(moduleExport);
+          }
+        }
+      }
+    }
+
+    return null;
+  }
+
   // detectCircularImports(module: Module, seen?: ReadonlyArray<Module>): ReadonlyArray<Module>[] {
   //   seen ??= [];
   //   const imports = this.getModuleImports(module);

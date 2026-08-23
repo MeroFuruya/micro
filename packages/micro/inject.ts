@@ -1,4 +1,4 @@
-import { Injector } from "./injector.js";
+import { Injector, InjectorStrategy } from "./injector.js";
 import type { ProviderToken, Type } from "./interface/index.js";
 
 
@@ -44,6 +44,8 @@ export function assertInjectionContext() {
   throw new Error("Currently not running inside an injection context");
 }
 
+const injectorStrategy: InjectorStrategy[] = [InjectorStrategy.CurrentProvided, InjectorStrategy.ImportedExported]
+
 export function inject<T>(token: Type<T>): T;
 export function inject<T = unknown>(injectionToken: symbol): T;
 export function inject<T>(token: ProviderToken): T {
@@ -54,5 +56,5 @@ export function inject<T>(token: ProviderToken): T {
     return injector as T;
   }
 
-  return injector.get<T>(token, { source: [] });
+  return injector.get<T>(token, { strategies: injectorStrategy });
 }

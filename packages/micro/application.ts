@@ -158,6 +158,11 @@ export class Application {
     throw new Error(`Module ${this.moduleStore.getModuleName(module)} does not provide ${getTokenName(token)}`)
   }
 
+  hasInstance(module: Module, token: ProviderToken): boolean {
+    if (this.instanceMap.hasToken(module, token)) return true;
+    return this.moduleStore.hasModuleProvider(module, token);
+  }
+
   bootstrapModule(module: Module) {
     const tokens = this.moduleStore.getModuleProviderTokens(module);
     for (const token of tokens) {
