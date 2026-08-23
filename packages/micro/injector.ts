@@ -1,5 +1,5 @@
 import type { Application } from "./application.js";
-import type { Module, ProviderToken, Type } from "./interface/index.js";
+import type { Module, ProviderInstance, ProviderToken, Type } from "./interface/index.js";
 import { getTokenName } from "./provider.js";
 
 const CurrentProvided = Symbol('CurrentProvided');
@@ -38,42 +38,48 @@ export class Injector {
     readonly module: Module,
   ) {}
 
+  getAll(token: ProviderToken, strategy: InjectorStrategy): ReadonlyArray<ProviderInstance> {
+    if (strategy === InjectorStrategy.CurrentProvided) {
+      if (!this.application.hasInstance(this.module, token)) return [];
+      const instances = this.application.getInstances(this.module, token);
+      return instances;
+    }
+    
+    if (strategy === InjectorStrategy.CurrentExported) {
+      const tokenExporter = this.application.moduleStore.getTokenExporter(this.module, token);
+      if (tokenExporter === null) return [];
+      const instances = this.application.getInstances(tokenExporter, token);
+      return instances;
+    }
+    
+    if (strategy === InjectorStrategy.ImportedExported) {
+      const imports = this.application.moduleStore.getModuleImports(this.module);
+      for (const moduleImport of imports) {
+        const tokenExporter = this.application.moduleStore.getTokenExporter(moduleImport, token);
+        if (tokenExporter === null) continue;
+        const instances = this.application.getInstances(tokenExporter, token);
+        return instances;
+      }
+    }
+    
+    if (strategy === InjectorStrategy.AnyExported) {
+    }
+    
+    if (strategy === InjectorStrategy.AnyProvided) {
+    }
+
+    return [];
+  }
+
 
   get<T>(token: Type<T>, options: InjectorOptions): T;
   get<T = unknown>(token: symbol, options: InjectorOptions): T;
   get<T = unknown>(token: ProviderToken, options: InjectorOptions): T;
   get<T>(token: ProviderToken, options: InjectorOptions): T {
     for (const strategy of options.strategies) {
-      if (strategy === InjectorStrategy.CurrentProvided) {
-        if (!this.application.hasInstance(this.module, token)) continue;
-        const instances = this.application.getInstances(this.module, token);
-        return instances[instances.length - 1];
-      }
-      
-      if (strategy === InjectorStrategy.CurrentExported) {
-        const tokenExporter = this.application.moduleStore.getTokenExporter(this.module, token);
-        if (tokenExporter === null) continue;
-        const instances = this.application.getInstances(tokenExporter, token);
-        return instances[instances.length - 1];
-      }
-      
-      if (strategy === InjectorStrategy.ImportedExported) {
-        const imports = this.application.moduleStore.getModuleImports(this.module);
-        for (const moduleImport of imports) {
-          const tokenExporter = this.application.moduleStore.getTokenExporter(moduleImport, token);
-          if (tokenExporter === null) continue;
-          const instances = this.application.getInstances(tokenExporter, token);
-          return instances[instances.length - 1];
-        }
-      }
-      
-      if (strategy === InjectorStrategy.AnyExported) {
-        throw new Error("Not implemented");
-      }
-      
-      if (strategy === InjectorStrategy.AnyProvided) {
-        throw new Error("Not implemented");
-      }
+      const instances = this.getAll(token, strategy);
+      if (instances.length <= 0) continue;
+      return instances[instances.length - 1];
     }
 
     throw new Error(`Instance for provider ${getTokenName(token)} could not be found.`)

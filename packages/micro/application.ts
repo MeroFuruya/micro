@@ -118,11 +118,9 @@ export class Application {
       }
       
       if (isDynamicClassProvider(provider)) {
-        
         const injector = this.getInjector(module);
         const value = runInInjectionContext(injector, () => new provider.useClass())
         this.instanceMap.addInstance(module, token, value);
-        
         continue;
       }
       

@@ -111,27 +111,6 @@ export class ModuleDefinitionStore {
     return null;
   }
 
-  // detectCircularImports(module: Module, seen?: ReadonlyArray<Module>): ReadonlyArray<Module>[] {
-  //   seen ??= [];
-  //   const imports = this.getModuleImports(module);
-
-  //   const circularImports: ReadonlyArray<Module>[] = [];
-  //   for (const moduleImport of imports) {
-  //     const newSeen = [...seen, module];
-      
-  //     if (seen.includes(moduleImport)) {
-  //       const seenIndex = seen.indexOf(moduleImport);
-  //       circularImports.push(newSeen.slice(seenIndex));
-  //       continue;
-  //     }
-      
-  //     const importedCircularImports = this.detectCircularImports(moduleImport, newSeen);
-  //     circularImports.push(...importedCircularImports)
-  //   }
-
-  //   return circularImports;
-  // }
-
   detectModuleIssue(rootModule: Module): Error | null {
     const modules = this.getModules();
 
