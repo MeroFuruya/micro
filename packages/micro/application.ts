@@ -1,9 +1,8 @@
 import { runInInjectionContext } from "./inject.js";
 import { Injector } from "./injector.js";
-import type { AsyncHookName, Module, Provider, ProviderInstance, ProviderToken } from "./interface/index.js";
-import { hasOwnProperty } from "./internal.js";
+import type { AsyncHookName, Module, ProviderInstance, ProviderToken } from "./interface/index.js";
 import { type ModuleDefinitionStore } from "./moduleDefinition.js";
-import { isDynamicClassProvider, isDynamicFactoryProvider, isDynamicProvider, isDynamicValueProvider, providerIsToken } from "./provider.js";
+import { getTokenName, isDynamicClassProvider, isDynamicFactoryProvider, isDynamicValueProvider, providerIsToken } from "./provider.js";
 
 class InstanceMap {
   readonly map = new Map<Module, Map<ProviderToken, ProviderInstance[]>>();
@@ -55,14 +54,14 @@ class InstanceMap {
 }
 
 class WeakModuleTokenMap {
-  private map = new WeakMap<Module, WeakSet<ProviderToken>>()
+  map = new Map<Module, Set<ProviderToken>>()
 
   set(module: Module, token: ProviderToken) {
     if (!this.map.has(module)) {
       this.map.set(module, new Set());
     }
     const tokenSet = this.map.get(module)!;
-    return tokenSet.has(token);
+    tokenSet.add(token);
   }
   
   has(module: Module, token: ProviderToken): boolean {
@@ -103,7 +102,7 @@ export class Application {
     if (this.isProviderBootstrapped(module, token)) throw new Error("Providers cannot be bootstrapped twice");
 
     if (this.currentlyBootstrappingProviderMap.has(module, token)) {
-      throw new Error(`Recursive dependency inside module ${String(module)}`)
+      throw new Error(`Recursive dependency inside ${this.moduleStore.getModuleName(module)}`)
     }
 
     const providers = this.moduleStore.getModuleProviders(module);
@@ -156,7 +155,7 @@ export class Application {
       return this.instanceMap.getInstances(module, token);
     }
 
-    throw new Error("Module does not provide Token") // TODO: Better error message
+    throw new Error(`Module ${this.moduleStore.getModuleName(module)} does not provide ${getTokenName(token)}`)
   }
 
   bootstrapModule(module: Module) {
@@ -184,7 +183,7 @@ export class Application {
   async runAsyncHook(name: AsyncHookName) {
     for (const [module, token, instance] of this.instanceMap.allInstances()) {
       if (typeof instance !== 'object') continue;
-      if (!hasOwnProperty(instance, name)) continue;
+      if (!(name in instance)) continue;
       const callback: unknown = instance[name];
       if (typeof callback !== 'function') continue;
       await callback.call(instance);

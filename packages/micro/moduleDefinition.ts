@@ -1,5 +1,5 @@
 import type { Module, ModuleDefinition, Provider, ProviderToken } from "./interface/index.js";
-import { isDynamicProvider } from "./provider.js";
+import { getTokenName, isDynamicProvider } from "./provider.js";
 
 
 
@@ -143,7 +143,7 @@ export class ModuleDefinitionStore {
           if (isModule) return new Error(`Exported module ${String(exportedToken)} was not imported`);
         }
 
-        return new Error(`Exported provider token ${String(exportedToken)} not provided in module`);
+        return new Error(`Exported provider token ${getTokenName(exportedToken)} not provided in module`);
       }
     }
 
