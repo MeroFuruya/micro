@@ -6,6 +6,7 @@ export type ProviderToken = symbol | Type;
 
 export type Provider = DynamicProvider | Type;
 
+export type ProviderInstanceToken = symbol;
 export type ProviderInstance = any;
 
 export interface DynamicClassProvider<T = unknown> {

@@ -1,6 +1,7 @@
 import { runInInjectionContext } from "./inject.js";
 import { Injector } from "./injector.js";
-import type { AsyncHookName, Module, ProviderInstance, ProviderToken } from "./interface/index.js";
+import type { AsyncHookName, Module, Provider, ProviderInstance, ProviderInstanceToken, ProviderToken } from "./interface/index.js";
+import { NestedSet, NestedWeakMap, NestedWeakSet } from "./internal.js";
 import { type ModuleDefinitionStore } from "./moduleDefinition.js";
 import { getTokenName, isDynamicClassProvider, isDynamicFactoryProvider, isDynamicValueProvider, providerIsToken } from "./provider.js";
 
@@ -82,82 +83,126 @@ export class Application {
     readonly moduleStore: ModuleDefinitionStore,
   ) {}
 
-  private injectorMap = new WeakMap<Module, Injector>();
-  getInjector(module: Module): Injector {
-    if (!this.injectorMap.has(module)) {
-      const injector = new Injector(this, module);
-      this.injectorMap.set(module, injector);
+  private readonly injectorMap = new NestedWeakMap<[Module, ProviderInstanceToken], Injector>(2);
+  getInjector(module: Module, instance: ProviderInstanceToken): Injector {
+    if (!this.injectorMap.has([module, instance])) {
+      const injector = new Injector(this, module, instance);
+      this.injectorMap.set([module, instance], injector);
+      return injector;
     }
-    return this.injectorMap.get(module)!;
+    return this.injectorMap.get([module, instance])!;
   }
 
-  private readonly instanceMap = new InstanceMap();
+  private readonly instanceStore = new WeakMap<ProviderInstanceToken, ProviderInstance>();
+  private readonly instanceMap = new NestedSet<[Module, ProviderToken, ProviderInstanceToken]>(3)
+  private readonly primaryInstanceMap = new NestedWeakMap<[Module, ProviderToken], ProviderInstanceToken>(2)
+  private readonly instanceDependencyMap = new NestedSet<[Module, ProviderToken, ProviderInstanceToken]>(3)
+
 
   isProviderBootstrapped(module: Module, token: ProviderToken): boolean {
-    return this.instanceMap.hasToken(module, token);
+    return this.instanceMap.has([module, token]);
   }
   
-  private readonly currentlyBootstrappingProviderMap = new WeakModuleTokenMap();
+  private readonly currentlyBootstrappingProvider = new NestedWeakSet<[Module, ProviderToken]>(2);
   bootstrapProvider(module: Module, token: ProviderToken) {
     if (this.isProviderBootstrapped(module, token)) throw new Error("Providers cannot be bootstrapped twice");
 
-    if (this.currentlyBootstrappingProviderMap.has(module, token)) {
+    if (this.currentlyBootstrappingProvider.has([module, token])) {
       throw new Error(`Recursive dependency inside ${this.moduleStore.getModuleName(module)}`)
     }
 
     const providers = this.moduleStore.getModuleProviders(module);
 
-    this.currentlyBootstrappingProviderMap.set(module, token);
-    
-    for (const provider of providers) {
-      if (!providerIsToken(provider, token)) continue;
+    this.currentlyBootstrappingProvider.add([module, token]);
 
-      if (isDynamicValueProvider(provider)) {
-        this.instanceMap.addInstance(module, token, provider.useValue);
-        continue;
-      }
-      
-      if (isDynamicClassProvider(provider)) {
-        const injector = this.getInjector(module);
-        const value = runInInjectionContext(injector, () => new provider.useClass())
-        this.instanceMap.addInstance(module, token, value);
-        continue;
-      }
-      
-      if (isDynamicFactoryProvider(provider)) {
-        const injector = this.getInjector(module);
-        const value = runInInjectionContext(injector, () => provider.useFactory())
-        this.instanceMap.addInstance(module, token, value);
-        continue;
-      }
+    try {
+      for (const [providerIndex, provider] of providers.entries()) {
+        if (!providerIsToken(provider, token)) continue;
 
-      const injector = this.getInjector(module);
-      const value = runInInjectionContext(injector, () => new provider())
-      this.instanceMap.addInstance(module, token, value);
+        const instanceToken = Symbol(`Instance.${getTokenName(token)}.${providerIndex}`);
+
+        if (isDynamicValueProvider(provider)) {
+          this.instanceStore.set(instanceToken, provider.useValue);
+          this.instanceMap.add([module, token, instanceToken]);
+          this.primaryInstanceMap.set([module, token], instanceToken);
+          continue;
+        }
+        
+        if (isDynamicClassProvider(provider)) {
+          const injector = this.getInjector(module, instanceToken);
+          const value = runInInjectionContext(injector, () => new provider.useClass())
+          this.instanceStore.set(instanceToken, value);
+          this.instanceMap.add([module, token, instanceToken]);
+          this.primaryInstanceMap.set([module, token], instanceToken);
+          continue;
+        }
+        
+        if (isDynamicFactoryProvider(provider)) {
+          const injector = this.getInjector(module, instanceToken);
+          const value = runInInjectionContext(injector, () => provider.useFactory())
+          this.instanceStore.set(instanceToken, value);
+          this.instanceMap.add([module, token, instanceToken]);
+          this.primaryInstanceMap.set([module, token], instanceToken);
+          continue;
+        }
+
+        const injector = this.getInjector(module, instanceToken);
+        const value = runInInjectionContext(injector, () => new provider())
+        this.instanceStore.set(instanceToken, value);
+        this.instanceMap.add([module, token, instanceToken]);
+        this.primaryInstanceMap.set([module, token], instanceToken);
+      }
+    } finally {
+      this.currentlyBootstrappingProvider.delete([module, token]);
     }
-    
-    this.currentlyBootstrappingProviderMap.del(module, token);
   }
 
-  getInstances(module: Module, token: ProviderToken): ReadonlyArray<ProviderInstance> {
+  getInstances(module: Module, token: ProviderToken, forInstance: ProviderInstanceToken): ReadonlyArray<ProviderInstance> {
+    this.instanceDependencyMap.add([module, token, forInstance]);
+
     if (this.isProviderBootstrapped(module, token)) {
-      return this.instanceMap.getInstances(module, token);
+      const instances = this.instanceMap.values([module, token]);
+      return instances.map((instance) => this.instanceStore.get(instance)!);
     }
     
-    if (this.instanceMap.hasToken(module, token)) {
-      return this.instanceMap.getInstances(module, token);
+    if (this.instanceMap.has([module, token])) {
+      const instances = this.instanceMap.values([module, token]);
+      return instances.map((instance) => this.instanceStore.get(instance));
     }
 
     if (this.moduleStore.hasModuleProvider(module, token)) {
       this.bootstrapProvider(module, token);
-      return this.instanceMap.getInstances(module, token);
+      const instances = this.instanceMap.values([module, token]);
+      return instances.map((instance) => this.instanceStore.get(instance));
+    }
+
+    throw new Error(`Module ${this.moduleStore.getModuleName(module)} does not provide ${getTokenName(token)}`)
+  }
+  
+  getInstance(module: Module, token: ProviderToken, forInstance: ProviderInstanceToken): ProviderInstance {
+    this.instanceDependencyMap.add([module, token, forInstance]);
+
+    if (this.isProviderBootstrapped(module, token)) {
+      const instance = this.primaryInstanceMap.get([module, token])!;
+      return this.instanceStore.get(instance);
+    }
+    
+    if (this.instanceMap.has([module, token])) {
+      const instance = this.primaryInstanceMap.get([module, token])!;
+      return this.instanceStore.get(instance);
+    }
+
+    if (this.moduleStore.hasModuleProvider(module, token)) {
+      this.bootstrapProvider(module, token);
+      const instance = this.primaryInstanceMap.get([module, token])!;
+      return this.instanceStore.get(instance);
     }
 
     throw new Error(`Module ${this.moduleStore.getModuleName(module)} does not provide ${getTokenName(token)}`)
   }
 
   hasInstance(module: Module, token: ProviderToken): boolean {
-    if (this.instanceMap.hasToken(module, token)) return true;
+    if (this.instanceMap.has([module, token])) return true;
     return this.moduleStore.hasModuleProvider(module, token);
   }
 
@@ -184,7 +229,8 @@ export class Application {
   }
 
   async runAsyncHook(name: AsyncHookName) {
-    for (const [module, token, instance] of this.instanceMap.allInstances()) {
+    for (const instanceKey of this.instanceMap.values([])) {
+      const instance = this.instanceStore.get(instanceKey);
       if (typeof instance !== 'object') continue;
       if (!(name in instance)) continue;
       const callback: unknown = instance[name];
