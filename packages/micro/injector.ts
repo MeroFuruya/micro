@@ -90,7 +90,7 @@ export class Injector {
       if (strategy === InjectorStrategy.CurrentExported) {
         const tokenExporter = this.application.getTokenExporter(this.module, token);
         if (tokenExporter === null) continue;
-        return this.application.getInstance(this.module, token, this.instanceToken);
+        return this.application.getInstance(tokenExporter, token, this.instanceToken);
       }
       
       if (strategy === InjectorStrategy.ImportedExported) {

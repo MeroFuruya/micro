@@ -1,5 +1,5 @@
 import type { ClassProvider, DynamicProvider, Module, ModuleDefinition, Provider, ProviderToken, Type } from "./interface/index.js";
-import { NestedMap, NestedSet, type ReadonlyNestedMap, type ReadonlyNestedSet } from "./nestedMap.js";
+import { NestedMap, NestedSet, type ReadonlyNestedMap, type ReadonlyNestedSet } from "./map.js";
 import { getTokenName, isDynamicProvider } from "./provider.js";
 
 export interface DefineModuleFunction {

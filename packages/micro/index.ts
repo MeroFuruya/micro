@@ -4,6 +4,6 @@ export * from './application.js';
 export * from './bootstrap.js';
 export * from './inject.js';
 export * from './injector.js';
-export * from './moduleDefinition.js';
+export * from './definition.js';
 export * from './provider.js';
-export * from './nestedMap.js';
+export * from './map.js';

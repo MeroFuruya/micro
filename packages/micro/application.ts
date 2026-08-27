@@ -1,8 +1,8 @@
 import { runInInjectionContext } from "./inject.js";
 import { Injector } from "./injector.js";
 import type { AsyncHookName, Module, Provider, ProviderInstance, ProviderInstanceToken, ProviderToken } from "./interface/index.js";
-import { NestedSet, NestedWeakMap, NestedWeakSet } from "./nestedMap.js";
-import { type ModuleDefinitionStore } from "./moduleDefinition.js";
+import { NestedSet, NestedWeakMap, NestedWeakSet } from "./map.js";
+import { type ModuleDefinitionStore } from "./definition.js";
 import { getTokenName, isDynamicClassProvider, isDynamicFactoryProvider, isDynamicProvider, isDynamicProviderProvider, isDynamicValueProvider, providerIsToken } from "./provider.js";
 
 export class Application {
