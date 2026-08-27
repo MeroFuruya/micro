@@ -1,5 +1,9 @@
 export class Baz1Service {
-  baz2() {
-    console.log("baz1");
+  onApplicationStart() {
+    console.log("Baz1Service.onApplicationStart")
+  }
+
+  test() {
+    console.log("Baz1Service.test");
   }
 }

@@ -7,8 +7,8 @@ export class Foo2Service implements OnApplicationStart {
   private readonly baz2Service = inject(Baz2Service);
   
   async onApplicationStart() {
-    await this.foo1service.foo1();
-
-    this.baz2Service.baz2();
+    console.log("Foo2Service.onApplicationStart")
+    this.foo1service.test();
+    this.baz2Service.test()
   }
 }

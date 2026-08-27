@@ -23,7 +23,7 @@ export class Application {
   private readonly instanceStore = new WeakMap<ProviderInstanceToken, ProviderInstance>();
   private readonly instanceSet = new NestedSet<[Module, ProviderToken, ProviderInstanceToken]>(3)
   private readonly primaryInstanceMap = new NestedWeakMap<[Module, ProviderToken], ProviderInstanceToken>(2)
-  private readonly instanceDependencySet = new NestedSet<[Module, ProviderToken, ProviderInstanceToken]>(3)
+  private readonly instanceDependencySet = new NestedSet<[ProviderInstanceToken, [Module, ProviderToken]]>(2)
 
 
   isProviderBootstrapped(module: Module, token: ProviderToken): boolean {
@@ -126,7 +126,7 @@ export class Application {
   }
 
   getInstances(module: Module, token: ProviderToken, forInstance: ProviderInstanceToken): ReadonlyArray<ProviderInstance> {
-    this.instanceDependencySet.add([module, token, forInstance]);
+    this.instanceDependencySet.add([forInstance, [module, token]]);
 
     if (this.isProviderBootstrapped(module, token)) {
       const instances = this.instanceSet.values([module, token]);
@@ -148,7 +148,7 @@ export class Application {
   }
 
   getInstance(module: Module, token: ProviderToken, forInstance: ProviderInstanceToken): ProviderInstance {
-    this.instanceDependencySet.add([module, token, forInstance]);
+    this.instanceDependencySet.add([forInstance, [module, token]]);
 
     if (this.isProviderBootstrapped(module, token)) {
       const instance = this.primaryInstanceMap.get([module, token])!;
@@ -208,9 +208,10 @@ export class Application {
 
     while (reverseInstanceMap.size > 0) {
       for (const [instance, [module, token]] of reverseInstanceMap.entries()) {
-        const instanceDependencies = this.instanceDependencySet.values([module, token]);
-        const allDependenciesReady = instanceDependencies.every((dependency) => !reverseInstanceMap.has(dependency));
-        if (!allDependenciesReady) continue;
+        const instanceDependencyTokens = this.instanceDependencySet.values([instance]);
+        const instanceDependencies = instanceDependencyTokens.flatMap(([module, token]) => this.instanceSet.values([module, token]));
+        const dependenciesWaiting = instanceDependencies.some((dependency) => reverseInstanceMap.has(dependency));
+        if (dependenciesWaiting) continue;
 
         reverseInstanceMap.delete(instance);
         yield [module, token, instance];
