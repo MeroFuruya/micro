@@ -92,6 +92,55 @@ export class NestedMap<K extends [...any[]], V extends any> {
     }
     return maps.flatMap((map) => map.values().toArray());
   }
+
+  *keys(key: [] | PartialRecursiveKey<K> | K): IterableIterator<K> {
+    if (key.length > this.depth) throw new Error("Key invalid");
+
+    let map = this.map as Map<unknown, unknown>;
+
+    for (const k of key) {
+      if (!map.has(k)) return;
+
+      const value = map.get(k);
+
+      if (key.length === this.depth) {
+        yield key as K;
+        return;
+      }
+
+      map = value as Map<unknown, unknown>;
+    }
+
+    const stack: Array<{
+      prefix: unknown[];
+      map: Map<unknown, unknown>;
+      depth: number;
+    }> = [
+      {
+        prefix: [...key],
+        map,
+        depth: key.length,
+      },
+    ];
+
+    while (stack.length > 0) {
+      const current = stack.pop()!;
+
+      for (const [k, value] of current.map) {
+        const fullKey = [...current.prefix, k];
+
+        if (current.depth === this.depth - 1) {
+          yield fullKey as K;
+        } else {
+          stack.push({
+            prefix: fullKey,
+            map: value as Map<unknown, unknown>,
+            depth: current.depth + 1,
+          });
+        }
+      }
+    }
+  }
 }
 
 export interface ReadonlyNestedMap<K extends [...any[]], V extends any> {
@@ -122,6 +171,10 @@ export class NestedSet<K extends [...any[]]> {
 
   values(key: [] | PartialRecursiveKey<K> | K): ReadonlyArray<LastKeyElement<K>> {
     return this.map.values(key);
+  }
+
+  enumerate(key: [] | PartialRecursiveKey<K> | K): IterableIterator<K> {
+    return this.map.keys(key);
   }
 }
 

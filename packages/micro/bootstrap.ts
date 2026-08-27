@@ -8,6 +8,6 @@ export function bootstrapApplication(module: Module, moduleMap?: ModuleDefinitio
   const moduleStore = buildModuleDefinitionStore(moduleMap, module);
   
   const application = new Application(moduleStore);
-  application.bootstrap(module);
+  application.bootstrap();
   return application;
 }

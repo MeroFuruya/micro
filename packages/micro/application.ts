@@ -1,7 +1,7 @@
 import { runInInjectionContext } from "./inject.js";
 import { Injector } from "./injector.js";
 import type { AsyncHookName, Module, Provider, ProviderInstance, ProviderInstanceToken, ProviderToken } from "./interface/index.js";
-import { NestedSet, NestedWeakMap, NestedWeakSet } from "./internal.js";
+import { NestedSet, NestedWeakMap, NestedWeakSet } from "./nestedMap.js";
 import { type ModuleDefinitionStore } from "./moduleDefinition.js";
 import { getTokenName, isDynamicClassProvider, isDynamicFactoryProvider, isDynamicProvider, isDynamicProviderProvider, isDynamicValueProvider, providerIsToken } from "./provider.js";
 
@@ -21,13 +21,13 @@ export class Application {
   }
 
   private readonly instanceStore = new WeakMap<ProviderInstanceToken, ProviderInstance>();
-  private readonly instanceMap = new NestedSet<[Module, ProviderToken, ProviderInstanceToken]>(3)
+  private readonly instanceSet = new NestedSet<[Module, ProviderToken, ProviderInstanceToken]>(3)
   private readonly primaryInstanceMap = new NestedWeakMap<[Module, ProviderToken], ProviderInstanceToken>(2)
-  private readonly instanceDependencyMap = new NestedSet<[Module, ProviderToken, ProviderInstanceToken]>(3)
+  private readonly instanceDependencySet = new NestedSet<[Module, ProviderToken, ProviderInstanceToken]>(3)
 
 
   isProviderBootstrapped(module: Module, token: ProviderToken): boolean {
-    return this.instanceMap.has([module, token]);
+    return this.instanceSet.has([module, token]);
   }
 
   hasModuleProvider(module: Module, token: ProviderToken): boolean {
@@ -73,7 +73,7 @@ export class Application {
         const injector = this.getInjector(module, instanceToken);
         const value = runInInjectionContext(injector, () => new token())
         this.instanceStore.set(instanceToken, value);
-        this.instanceMap.add([module, token, instanceToken]);
+        this.instanceSet.add([module, token, instanceToken]);
         this.primaryInstanceMap.set([module, token], instanceToken);
       } finally {
         this.currentlyBootstrappingProvider.delete([module, token]);
@@ -93,7 +93,7 @@ export class Application {
 
         if (isDynamicValueProvider(provider)) {
           this.instanceStore.set(instanceToken, provider.useValue);
-          this.instanceMap.add([module, token, instanceToken]);
+          this.instanceSet.add([module, token, instanceToken]);
           this.primaryInstanceMap.set([module, token], instanceToken);
           return;
         }
@@ -102,7 +102,7 @@ export class Application {
           const injector = this.getInjector(module, instanceToken);
           const value = runInInjectionContext(injector, () => new provider.useClass())
           this.instanceStore.set(instanceToken, value);
-          this.instanceMap.add([module, token, instanceToken]);
+          this.instanceSet.add([module, token, instanceToken]);
           this.primaryInstanceMap.set([module, token], instanceToken);
           return;
         }
@@ -111,7 +111,7 @@ export class Application {
           const injector = this.getInjector(module, instanceToken);
           const value = runInInjectionContext(injector, () => provider.useFactory())
           this.instanceStore.set(instanceToken, value);
-          this.instanceMap.add([module, token, instanceToken]);
+          this.instanceSet.add([module, token, instanceToken]);
           this.primaryInstanceMap.set([module, token], instanceToken);
           return;
         }
@@ -126,21 +126,21 @@ export class Application {
   }
 
   getInstances(module: Module, token: ProviderToken, forInstance: ProviderInstanceToken): ReadonlyArray<ProviderInstance> {
-    this.instanceDependencyMap.add([module, token, forInstance]);
+    this.instanceDependencySet.add([module, token, forInstance]);
 
     if (this.isProviderBootstrapped(module, token)) {
-      const instances = this.instanceMap.values([module, token]);
+      const instances = this.instanceSet.values([module, token]);
       return instances.map((instance) => this.instanceStore.get(instance)!);
     }
     
-    if (this.instanceMap.has([module, token])) {
-      const instances = this.instanceMap.values([module, token]);
+    if (this.instanceSet.has([module, token])) {
+      const instances = this.instanceSet.values([module, token]);
       return instances.map((instance) => this.instanceStore.get(instance));
     }
 
     if (this.hasModuleProvider(module, token)) {
       this.bootstrapProvider(module, token);
-      const instances = this.instanceMap.values([module, token]);
+      const instances = this.instanceSet.values([module, token]);
       return instances.map((instance) => this.instanceStore.get(instance));
     }
 
@@ -148,14 +148,14 @@ export class Application {
   }
 
   getInstance(module: Module, token: ProviderToken, forInstance: ProviderInstanceToken): ProviderInstance {
-    this.instanceDependencyMap.add([module, token, forInstance]);
+    this.instanceDependencySet.add([module, token, forInstance]);
 
     if (this.isProviderBootstrapped(module, token)) {
       const instance = this.primaryInstanceMap.get([module, token])!;
       return this.instanceStore.get(instance);
     }
     
-    if (this.instanceMap.has([module, token])) {
+    if (this.instanceSet.has([module, token])) {
       const instance = this.primaryInstanceMap.get([module, token])!;
       return this.instanceStore.get(instance);
     }
@@ -170,7 +170,7 @@ export class Application {
   }
 
   hasInstance(module: Module, token: ProviderToken): boolean {
-    if (this.instanceMap.has([module, token])) return true;
+    if (this.instanceSet.has([module, token])) return true;
     return this.hasModuleProvider(module, token);
   }
 
@@ -186,7 +186,7 @@ export class Application {
     }
   }
 
-  bootstrap(module: Module) {
+  bootstrap() {
     const waitingModules = new Set(this.moduleStore.module);
     while (waitingModules.size > 0) {
       for (const module of waitingModules.values()) {
@@ -200,9 +200,27 @@ export class Application {
     }
   }
 
+  *enumerateInstances(): IterableIterator<[Module, ProviderToken, ProviderInstanceToken]> {
+    const reverseInstanceMap = new Map<ProviderInstanceToken, [Module, ProviderToken]>();
+    for (const [module, token, instance] of this.instanceSet.enumerate([])) {
+      reverseInstanceMap.set(instance, [module, token]);
+    }
+
+    while (reverseInstanceMap.size > 0) {
+      for (const [instance, [module, token]] of reverseInstanceMap.entries()) {
+        const instanceDependencies = this.instanceDependencySet.values([module, token]);
+        const allDependenciesReady = instanceDependencies.every((dependency) => !reverseInstanceMap.has(dependency));
+        if (!allDependenciesReady) continue;
+
+        reverseInstanceMap.delete(instance);
+        yield [module, token, instance];
+      }
+    }
+  }
+
   async runAsyncHook(name: AsyncHookName) {
-    for (const instanceKey of this.instanceMap.values([])) {
-      const instance = this.instanceStore.get(instanceKey);
+    for (const [,,instanceToken] of this.enumerateInstances()) {
+      const instance = this.instanceStore.get(instanceToken);
       if (typeof instance !== 'object') continue;
       if (!(name in instance)) continue;
       const callback: unknown = instance[name];
