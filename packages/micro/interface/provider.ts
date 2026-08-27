@@ -3,12 +3,6 @@ export interface Type<T = any> extends Function {
 }
 
 export type ProviderToken = symbol | Type;
-
-export type Provider = DynamicProvider | Type;
-
-export type ProviderInstanceToken = symbol;
-export type ProviderInstance = any;
-
 export interface DynamicClassProvider<T = unknown> {
   for: ProviderToken;
   useClass: Type<T>;
@@ -24,4 +18,15 @@ export interface DynamicFactoryProvider<T = unknown> {
   useFactory: () => T;
 }
 
-export type DynamicProvider<T = unknown> = DynamicClassProvider<T> | DynamicValueProvider<T> | DynamicFactoryProvider<T>;
+export interface DynamicProviderProvider {
+  for: ProviderToken;
+  useProvider: ProviderToken;
+}
+
+export type DynamicProvider<T = unknown> = DynamicClassProvider<T> | DynamicValueProvider<T> | DynamicFactoryProvider<T> | DynamicProviderProvider;
+export type ClassProvider<T = unknown> = Type<T>;
+
+export type Provider = DynamicProvider | ClassProvider;
+
+export type ProviderInstanceToken = symbol;
+export type ProviderInstance = any;

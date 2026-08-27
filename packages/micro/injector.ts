@@ -47,16 +47,16 @@ export class Injector {
     }
     
     if (strategy === InjectorStrategy.CurrentExported) {
-      const tokenExporter = this.application.moduleStore.getTokenExporter(this.module, token);
+      const tokenExporter = this.application.getTokenExporter(this.module, token);
       if (tokenExporter === null) return [];
       const instances = this.application.getInstances(tokenExporter, token, this.instanceToken);
       return instances;
     }
     
     if (strategy === InjectorStrategy.ImportedExported) {
-      const imports = this.application.moduleStore.getModuleImports(this.module);
+      const imports = this.application.moduleStore.importModule.values([this.module]);
       for (const moduleImport of imports) {
-        const tokenExporter = this.application.moduleStore.getTokenExporter(moduleImport, token);
+        const tokenExporter = this.application.getTokenExporter(moduleImport, token);
         if (tokenExporter === null) continue;
         const instances = this.application.getInstances(tokenExporter, token, this.instanceToken);
         return instances;
@@ -83,20 +83,20 @@ export class Injector {
   get<T>(token: ProviderToken, options: InjectorOptions): T {
     for (const strategy of options.strategies) {
       if (strategy === InjectorStrategy.CurrentProvided) {
-        if (!this.application.hasInstance(this.module, token)) continue;;
+        if (!this.application.hasInstance(this.module, token)) continue;
         return this.application.getInstance(this.module, token, this.instanceToken);
       }
       
       if (strategy === InjectorStrategy.CurrentExported) {
-        const tokenExporter = this.application.moduleStore.getTokenExporter(this.module, token);
-        if (tokenExporter === null) continue;;
+        const tokenExporter = this.application.getTokenExporter(this.module, token);
+        if (tokenExporter === null) continue;
         return this.application.getInstance(this.module, token, this.instanceToken);
       }
       
       if (strategy === InjectorStrategy.ImportedExported) {
-        const imports = this.application.moduleStore.getModuleImports(this.module);
+        const imports = this.application.moduleStore.importModule.values([this.module]);
         for (const moduleImport of imports) {
-          const tokenExporter = this.application.moduleStore.getTokenExporter(moduleImport, token);
+          const tokenExporter = this.application.getTokenExporter(moduleImport, token);
           if (tokenExporter === null) continue;
           return this.application.getInstance(tokenExporter, token, this.instanceToken);
         }

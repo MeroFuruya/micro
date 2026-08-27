@@ -1,16 +1,13 @@
 import { Application } from "./application.js";
 import type { Module } from "./interface/index.js";
-import { ModuleDefinitionStore } from "./moduleDefinition.js";
+import { buildModuleDefinitionStore, globalModuleMap, type ModuleDefinitionMap } from "./moduleDefinition.js";
 
-export function bootstrapApplication(module: Module, moduleDefinitionStore?: ModuleDefinitionStore, ): Application {
-  moduleDefinitionStore ??= ModuleDefinitionStore.getGlobalModuleStore();
+export function bootstrapApplication(module: Module, moduleMap?: ModuleDefinitionMap): Application {
+  moduleMap ??= globalModuleMap;
+
+  const moduleStore = buildModuleDefinitionStore(moduleMap, module);
   
-  const moduleIssue = moduleDefinitionStore.detectModuleIssue(module);
-  if (moduleIssue !== null) {
-    throw moduleIssue;
-  }
-  
-  const application = new Application(moduleDefinitionStore);
+  const application = new Application(moduleStore);
   application.bootstrap(module);
   return application;
 }

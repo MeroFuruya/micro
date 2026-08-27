@@ -94,6 +94,12 @@ export class NestedMap<K extends [...any[]], V extends any> {
   }
 }
 
+export interface ReadonlyNestedMap<K extends [...any[]], V extends any> {
+  get(key: K): V | undefined;
+  has(key: PartialRecursiveKey<K> | K): boolean;
+  values(key: [] | PartialRecursiveKey<K> | K): V[];
+}
+
 export class NestedSet<K extends [...any[]]> {
   constructor(readonly depth: K['length']) {
     if (this.depth < 0) throw new Error("Set must have at least depth 1");
@@ -117,6 +123,11 @@ export class NestedSet<K extends [...any[]]> {
   values(key: [] | PartialRecursiveKey<K> | K): ReadonlyArray<LastKeyElement<K>> {
     return this.map.values(key);
   }
+}
+
+export interface ReadonlyNestedSet<K extends [...any[]]> {
+  has(key: PartialRecursiveKey<K> | K): boolean;
+  values(key: [] | PartialRecursiveKey<K> | K): ReadonlyArray<LastKeyElement<K>>;
 }
 
 
@@ -179,6 +190,11 @@ export class NestedWeakMap<K extends [...WeakKey[]], V extends any> {
   }
 }
 
+export interface ReadonlyNestedWeakMap<K extends [...WeakKey[]], V extends any> {
+  get(key: K): V | undefined;
+  has(key: PartialRecursiveKey<K> | K): boolean;
+}
+
 export class NestedWeakSet<K extends [...WeakKey[]]> {
   constructor(readonly depth: K['length']) {
     if (this.depth < 0) throw new Error("Set must have at least depth 1");
@@ -198,5 +214,9 @@ export class NestedWeakSet<K extends [...WeakKey[]]> {
   delete(key: PartialRecursiveKey<K> | K) {
     this.map.delete(key)
   }
+}
+
+export interface ReadonlyNestedWeakSet<K extends [...WeakKey[]]> {
+  has(key: PartialRecursiveKey<K> | K): boolean;
 }
 

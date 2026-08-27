@@ -1,185 +1,151 @@
-import type { Module, ModuleDefinition, Provider, ProviderToken } from "./interface/index.js";
+import type { ClassProvider, DynamicProvider, Module, ModuleDefinition, Provider, ProviderToken, Type } from "./interface/index.js";
+import { NestedMap, NestedSet, type ReadonlyNestedMap, type ReadonlyNestedSet } from "./internal.js";
 import { getTokenName, isDynamicProvider } from "./provider.js";
 
+export interface DefineModuleFunction {
+  (definition: Readonly<ModuleDefinition>): Module
+}
 
+export type ModuleDefinitionMap = Map<Module, Readonly<ModuleDefinition>>;
 
-export class ModuleDefinitionStore {
-  private static instance?: ModuleDefinitionStore;
-  static getGlobalModuleStore(): ModuleDefinitionStore {
-    if (ModuleDefinitionStore.instance === undefined) {
-      ModuleDefinitionStore.instance = new ModuleDefinitionStore();
-    }
-    return ModuleDefinitionStore.instance
-  }
-
-  private readonly store = new Map<Module, Readonly<ModuleDefinition>>();
-
-  defineModule(definition: Readonly<ModuleDefinition>): Module {
+export function defineModuleFactory(
+  storeReference: Map<Module, Readonly<ModuleDefinition>>,
+): DefineModuleFunction {
+  return function (definition: Readonly<ModuleDefinition>): Module {
     const module = Symbol(definition.name);
-    this.store.set(module, definition);
+    storeReference.set(module, definition);
     return module;
-  }
-
-  getDefinition(module: Module): Readonly<ModuleDefinition> {
-    if (!this.store.has(module)) throw new Error(`Module not defined ${String(module)}`);
-    return this.store.get(module)!;
-  }
-
-  hasModule(module: Module): boolean {
-    return this.store.has(module);
-  }
-
-  getModules(): ReadonlyArray<Module> {
-    return [...this.store.keys()]
-  }
-
-  getModuleImports(module: Module): ReadonlyArray<Module> {
-    return this.getDefinition(module).import ?? [];
-  }
-  
-  getModuleName(module: Module): string {
-    return this.getDefinition(module).name;
-  }
-
-  getModuleProviders(module: Module): ReadonlyArray<Provider> {
-    return this.getDefinition(module).provide ?? [];
-  }
-  
-  getModuleProviderTokens(module: Module): ReadonlyArray<ProviderToken> {
-    const providers = this.getModuleProviders(module);
-    const providerTokens: ProviderToken[] = [];
-    for (const provider of providers) {
-      if (isDynamicProvider(provider)) {
-        providerTokens.push(provider.for);
-      } else {
-        providerTokens.push(provider);
-      }
-    }
-    return providerTokens
-  }
-
-  hasModuleProvider(module: Module, token: ProviderToken): boolean {
-    const providers = this.getModuleProviders(module);
-    for (const provider of providers) {
-      if (isDynamicProvider(provider) && provider.for === token) return true;
-      else if (provider === token) return true;
-    }
-    return false;
-  }
-  
-  getModuleExports(module: Module): ReadonlyArray<ProviderToken | Module> {
-    return this.getDefinition(module).export ?? [];
-  }
-
-  getModulesInTree(module: Module): Set<Module> {
-    const modules = new Set<Module>();
-
-    const visit = (current: Module) => {
-      if (modules.has(current)) return;
-      modules.add(current);
-      for (const importedModule of this.getModuleImports(current)) {
-        visit(importedModule);
-      }
-    };
-
-    visit(module);
-    
-    return modules;
-  }
-
-  getTokenExporter(module: Module, token: ProviderToken): Module | null {
-    const currentlyVisitingModules = new Set<Module>([module]);
-    const visitedModules = new Set<Module>();
-
-    while (currentlyVisitingModules.size > 0) {
-      for (const visitModule of currentlyVisitingModules) {
-        currentlyVisitingModules.delete(visitModule);
-        visitedModules.add(visitModule);
-
-        const moduleExports = this.getModuleExports(visitModule);
-        
-        for (const moduleExport of moduleExports) {
-          if (moduleExport === token) return visitModule;
-
-          if (typeof moduleExport === 'symbol' && this.hasModule(moduleExport)) {
-            currentlyVisitingModules.add(moduleExport);
-          }
-        }
-      }
-    }
-
-    return null;
-  }
-
-  detectModuleIssue(rootModule: Module): Error | null {
-    const modules = this.getModules();
-
-    for (const module of modules) {
-      const imports = this.getModuleImports(module);
-      const providerTokens = this.getModuleProviderTokens(module);
-      const exports = this.getModuleExports(module);
-
-      // Validate imports
-      for (const importedModule of imports) {
-        if (!this.hasModule(importedModule)) {
-          return new Error(`Imported module ${String(importedModule)} not defined`)
-        }
-      }
-
-      // Validate Providers
-      for (const providerToken of providerTokens) {
-        if (typeof providerToken === 'symbol' && this.hasModule(providerToken)) {
-          return new Error(`Module cannot be used as Provider Token ${String(providerToken)}`)
-        }
-      }
-
-      // Validate Exports
-      for (const exportedToken of exports) {
-        const isProvided = providerTokens.includes(exportedToken);
-        if (isProvided) continue;
-        
-        if (typeof exportedToken === 'symbol') {
-          const isImportedModule = imports.includes(exportedToken);
-          if (isImportedModule) continue;
-  
-          const isModule = this.hasModule(exportedToken);
-          if (isModule) return new Error(`Exported module ${String(exportedToken)} was not imported`);
-        }
-
-        return new Error(`Exported provider token ${getTokenName(exportedToken)} not provided in module`);
-      }
-    }
-
-    const detectCircularImports = (module: Module, seen?: ReadonlyArray<Module>): ReadonlyArray<Module> | null => {
-      seen ??= [];
-      const imports = this.getModuleImports(module);
-
-      for (const moduleImport of imports) {
-        const newSeen = [...seen, module];
-        
-        if (seen.includes(moduleImport)) {
-          const seenIndex = seen.indexOf(moduleImport);
-          return newSeen.slice(seenIndex)
-        }
-        
-        const importedCircularImports = detectCircularImports(moduleImport, newSeen);
-        if (importedCircularImports !== null) {
-          return importedCircularImports;
-        }
-      }
-      return null;
-    }
-
-    const circularImport = detectCircularImports(rootModule)
-    if (circularImport !== null) {
-      const circularImportNames = circularImport.map((module) => this.getModuleName(module));
-      return new Error(`Detected circular import ${circularImportNames.join(' -> ')}`)
-    }
-
-    return null;
   }
 }
 
-export function defineModule(definition: Readonly<ModuleDefinition>): Module {
-  return ModuleDefinitionStore.getGlobalModuleStore().defineModule(definition);
+export const globalModuleMap: ModuleDefinitionMap = new Map();
+export const defineModule = defineModuleFactory(globalModuleMap);
+
+export interface ModuleDefinitionStore {
+  readonly module: ReadonlySet<Module>;
+  readonly name: ReadonlyMap<Module, string>;
+  readonly importModule: ReadonlyNestedSet<[Module, Module]>;
+  readonly provideClass: ReadonlyNestedSet<[Module, ClassProvider]>;
+  readonly provideDynamic: ReadonlyNestedMap<[Module, ProviderToken], DynamicProvider>;
+  readonly exportProvider: ReadonlyNestedSet<[Module, ProviderToken]>;
+  readonly exportModule: ReadonlyNestedSet<[Module, Module]>;
+}
+
+export function buildModuleDefinitionStore(
+  store: ReadonlyMap<Module, Readonly<ModuleDefinition>>,
+  rootModule: Module,
+): Readonly<ModuleDefinitionStore> {
+  const moduleSet = new Set<Module>();
+  const nameMap = new Map<Module, string>();
+  const importModuleSet = new NestedSet<[Module, Module]>(2);
+  const provideClassSet = new NestedSet<[Module, ClassProvider]>(2);
+  const provideDynamicMap = new NestedMap<[Module, ProviderToken], DynamicProvider>(2);
+  const exportProviderSet = new NestedSet<[Module, ProviderToken]>(2);
+  const exportModuleSet = new NestedSet<[Module, Module]>(2);
+
+  const currentlyVisitingModules = new Set<Module>([rootModule]);
+  while (currentlyVisitingModules.size > 0) {
+    const module = currentlyVisitingModules.values().next().value!;
+    currentlyVisitingModules.delete(module);
+
+    if (moduleSet.has(module)) continue;
+    moduleSet.add(module);
+
+    // Get Definition
+    if (!store.has(module)) throw new Error(`Module not defined ${module.description}`);
+    const moduleDefinition = store.get(module)!;
+
+    // Set Name
+    nameMap.set(module, moduleDefinition.name);
+
+    // Imports
+    for (const [importIndex, moduleImport] of (moduleDefinition.import ?? []).entries()) {
+      // Validate Import
+      if (!store.has(moduleImport)) {
+        throw new Error(`Import at index ${importIndex} of Module ${nameMap.get(module)} not defined`);
+      }
+      
+      // Set Import
+      importModuleSet.add([module, moduleImport]);
+
+      // Add Imported module to queue
+      currentlyVisitingModules.add(moduleImport);
+    }
+
+    // Providers
+    for (const [providerIndex, provider] of (moduleDefinition.provide ?? []).entries()) {
+      if (isDynamicProvider(provider)) {
+        provideDynamicMap.set([module, provider.for], provider);
+        continue;
+      }
+      
+      if (typeof provider === 'function') {
+        provideClassSet.add([module, provider]);
+        continue;
+      }
+
+      if (typeof provider === 'symbol' && store.has(provider)) {
+        throw new Error(`Module cannot be used as Provider ${(provider as symbol).description}`)
+      }
+
+      throw new Error(`Provider at index ${providerIndex} of Module ${nameMap.get(module)} must be a Class or Dynamic Provider`);
+    }
+
+    // Exports
+    for (const [exportIndex, exportToken] of (moduleDefinition.export ?? []).entries()) {
+      if (provideDynamicMap.has([module, exportToken])) {
+        exportProviderSet.add([module, exportToken]);
+        continue;
+      }
+      
+      if (typeof exportToken === 'function' && provideClassSet.has([module, exportToken])) {
+        exportProviderSet.add([module, exportToken]);
+        continue;
+      }
+
+      if (typeof exportToken === 'symbol' && importModuleSet.has([module, exportToken])) {
+        exportModuleSet.add([module, exportToken]);
+        continue;
+      }
+
+      throw new Error(`Export at ${exportIndex} of Module ${nameMap.get(module)} must be a Provided Class, Dynamic Provider Key or imported Module`);
+    }
+  }
+
+  function detectCircularImports(
+    module: Module,
+    seen: ReadonlyArray<Module>,
+  ): ReadonlyArray<Module> | null {
+    const newSeen = [...seen, module];
+    
+    const imports = importModuleSet.values([module]);
+    for (const moduleImport of imports) {
+      if (seen.includes(moduleImport)) {
+        const seenIndex = seen.indexOf(moduleImport);
+        return newSeen.slice(seenIndex)
+      }
+      
+      const importedCircularImports = detectCircularImports(moduleImport, newSeen);
+      if (importedCircularImports !== null) {
+        return importedCircularImports;
+      }
+    }
+    return null;
+  }
+
+  const circularImport = detectCircularImports(rootModule, [])
+  if (circularImport !== null) {
+    const circularImportNames = circularImport.map((module) => nameMap.get(module));
+    throw new Error(`Detected circular import ${circularImportNames.join(' -> ')}`)
+  }
+
+  return {
+    module: moduleSet,
+    name: nameMap,
+    importModule: importModuleSet,
+    provideClass: provideClassSet,
+    provideDynamic: provideDynamicMap,
+    exportProvider: exportProviderSet,
+    exportModule: exportModuleSet,
+  }
 }

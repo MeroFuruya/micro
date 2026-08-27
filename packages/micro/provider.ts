@@ -1,4 +1,4 @@
-import type { DynamicClassProvider, DynamicFactoryProvider, DynamicProvider, DynamicValueProvider, Provider, ProviderToken } from "./interface/index.js";
+import type { DynamicClassProvider, DynamicFactoryProvider, DynamicProvider, DynamicProviderProvider, DynamicValueProvider, Provider, ProviderToken } from "./interface/index.js";
 
 function hasOwnProperty<T extends object, K extends PropertyKey>(value: T, property: K): value is (T & {[P in K]: unknown}) {
   return Object.prototype.hasOwnProperty.call(value, property);
@@ -43,12 +43,19 @@ export function isDynamicFactoryProvider(provider: Provider): provider is Dynami
   return hasOwnProperty(provider, 'useFactory');
 }
 
+export function isDynamicProviderProvider(provider: Provider): provider is DynamicProviderProvider {
+  if (typeof provider !== "object") return false;
+  if (!hasOwnProperty(provider, 'for')) return false;
+  return hasOwnProperty(provider, 'useProvider');
+}
+
 export function isDynamicProvider(provider: Provider): provider is DynamicProvider {
   return (
     isDynamicClassProvider(provider) ||
     isDynamicValueProvider(provider) ||
-    isDynamicFactoryProvider(provider)
-  )
+    isDynamicFactoryProvider(provider) ||
+    isDynamicProviderProvider(provider)
+  );
 }
 
 export function providerIsToken(provider: Provider, token: ProviderToken): boolean {
