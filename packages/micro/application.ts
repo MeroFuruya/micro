@@ -1,6 +1,6 @@
 import { runInInjectionContext } from "./inject.js";
 import { Injector } from "./injector.js";
-import type { AsyncHookName, Module, Provider, ProviderInstance, ProviderInstanceToken, ProviderToken } from "./interface/index.js";
+import type { Module, OnApplicationStart, OnApplicationStop, Provider, ProviderInstance, ProviderInstanceToken, ProviderToken } from "./interface/index.js";
 import { NestedSet, NestedWeakMap, NestedWeakSet } from "./map.js";
 import { type ModuleDefinitionStore } from "./definition.js";
 import { getTokenName, isDynamicClassProvider, isDynamicFactoryProvider, isDynamicProvider, isDynamicProviderProvider, isDynamicValueProvider, providerIsToken } from "./provider.js";
@@ -219,7 +219,18 @@ export class Application {
     }
   }
 
-  async runAsyncHook(name: AsyncHookName) {
+  async runHook(name: string | number | symbol) {
+    for (const [,,instanceToken] of this.enumerateInstances()) {
+      const instance = this.instanceStore.get(instanceToken);
+      if (typeof instance !== 'object') continue;
+      if (!(name in instance)) continue;
+      const callback: unknown = instance[name];
+      if (typeof callback !== 'function') continue;
+      await callback.call(instance);
+    }
+  }
+
+  async runAsyncHook(name: string | number | symbol) {
     for (const [,,instanceToken] of this.enumerateInstances()) {
       const instance = this.instanceStore.get(instanceToken);
       if (typeof instance !== 'object') continue;
@@ -231,10 +242,12 @@ export class Application {
   }
 
   async start() {
-    await this.runAsyncHook('onApplicationStart')
+    const applicationStartHook: keyof OnApplicationStart = 'onApplicationStart';
+    await this.runAsyncHook(applicationStartHook);
   }
   
   async stop() {
-    await this.runAsyncHook('onApplicationStop')
+    const applicationStopHook: keyof OnApplicationStop = 'onApplicationStop';
+    await this.runAsyncHook(applicationStopHook);
   }
 }
