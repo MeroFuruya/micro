@@ -39,9 +39,9 @@
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true,
-    "paths": {
-      "@micro/core": ["./packages/core/index.ts"],
-      "@micro/http": ["./packages/http/index.ts"],
-    },
+    // "paths": {
+    //   "@micro/core": ["./packages/core/index.ts"],
+    //   "@micro/http": ["./packages/http/index.ts"],
+    // },
   },
 }

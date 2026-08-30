@@ -57,9 +57,3 @@ export function isDynamicProvider(provider: Provider): provider is DynamicProvid
     isDynamicProviderProvider(provider)
   );
 }
-
-export function providerIsToken(provider: Provider, token: ProviderToken): boolean {
-  if (token === provider) return true;
-  if (!isDynamicProvider(provider)) return false;
-  return provider.for === token;
-}

@@ -3,10 +3,12 @@
   "private": true,
   "scripts": {
     "clean": "rm -rf ./dist",
-    "build": "tsc -p ."
+    "build": "tsc -b",
+    "start": "node ."
   },
   "dependencies": {
     "@micro/core": "workspace:"
   },
-  "type": "module"
+  "type": "module",
+  "main": "dist/index.js"
 }

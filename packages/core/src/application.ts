@@ -1,9 +1,9 @@
-import { runInInjectionContext } from "../src/inject.js";
-import { Injector } from "../src/injector.js";
+import { runInInjectionContext } from "./inject.js";
+import { Injector } from "./injector.js";
 import type { Module, OnApplicationStart, OnApplicationStop, ProviderInstance, ProviderInstanceToken, ProviderToken } from "./interface/index.js";
-import { NestedSet, NestedWeakMap, NestedWeakSet } from "../src/map.js";
-import { type ModuleDefinitionStore } from "../src/definition.js";
-import { getTokenName, isDynamicClassProvider, isDynamicFactoryProvider, isDynamicProviderProvider, isDynamicValueProvider, providerIsToken } from "../src/provider.js";
+import { NestedSet, NestedWeakMap, NestedWeakSet } from "./map.js";
+import { type ModuleDefinitionStore } from "./definition.js";
+import { getTokenName, isDynamicClassProvider, isDynamicFactoryProvider, isDynamicProviderProvider, isDynamicValueProvider } from "./provider.js";
 
 export class Application {
   constructor(
