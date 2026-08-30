@@ -1,5 +1,11 @@
 {
   "name": "@micro/core",
   "description": "A small DI-library without decorators",
-  "type": "module"
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js"
 }
