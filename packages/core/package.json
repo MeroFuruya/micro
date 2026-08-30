@@ -4,8 +4,12 @@
   "type": "module",
   "exports": {
     ".": {
+      "require": "./dist/index.js",
       "import": "./dist/index.js"
     }
   },
-  "main": "./dist/index.js"
+  "main": "./dist/index.js",
+  "scripts": {
+    "clean": "rm -rf ./dist/ ./tsconfig.tsbuildinfo"
+  }
 }

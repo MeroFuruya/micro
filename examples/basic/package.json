@@ -1,6 +1,10 @@
 {
   "name": "@micro-example/basic",
   "private": true,
+  "scripts": {
+    "clean": "rm -rf ./dist",
+    "build": "tsc -p ."
+  },
   "dependencies": {
     "@micro/core": "workspace:"
   },
