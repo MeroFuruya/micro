@@ -1,4 +1,4 @@
-import { defineModule } from "../../../micro/index.js";
+import { defineModule } from "@micro/core";
 import { BazModule } from "../baz/index.js";
 import { Foo1Service } from "./foo1.js";
 import { Foo2Service } from "./foo2.js";

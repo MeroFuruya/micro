@@ -1,0 +1,14 @@
+{
+  "name": "@micro/http",
+  "description": "An express wrapper for micro-di",
+  "dependencies": {
+    "express": "^5.2.1"
+  },
+  "peerDependencies": {
+    "@micro/core": "workspace:"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6"
+  },
+  "type": "module"
+}

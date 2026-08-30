@@ -1,4 +1,4 @@
-import { defineModule } from "../../micro/index.js";
+import { defineModule } from "@micro/core";
 import { FooModule } from "./foo/index.js";
 
 export const AppModule = defineModule({

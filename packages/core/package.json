@@ -1,0 +1,5 @@
+{
+  "name": "@micro/core",
+  "description": "A small DI-library without decorators",
+  "type": "module"
+}

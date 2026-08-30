@@ -1,0 +1,8 @@
+{
+  "name": "@micro-example/basic",
+  "private": true,
+  "dependencies": {
+    "@micro/core": "workspace:"
+  },
+  "type": "module"
+}

@@ -1,4 +1,4 @@
-import type { OnApplicationStart } from "../../../micro/index.js";
+import type { OnApplicationStart } from "@micro/core";
 
 export class Foo1Service implements OnApplicationStart {
   test() {

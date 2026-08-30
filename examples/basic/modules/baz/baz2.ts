@@ -1,4 +1,4 @@
-import { inject, type OnApplicationStart } from "../../../micro/index.js";
+import { inject, type OnApplicationStart } from "@micro/core";
 import { Baz1Service } from "./baz1.js";
 
 export class Baz2Service implements OnApplicationStart {
