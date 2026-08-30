@@ -1,9 +1,0 @@
-{
-  "name": "@micro-example/http",
-  "private": true,
-  "dependencies": {
-    "@micro/core": "workspace:",
-    "@micro/http": "workspace:"
-  },
-  "type": "module"
-}
