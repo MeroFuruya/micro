@@ -1,14 +1,12 @@
 import { runInInjectionContext } from "./inject.js";
 import { Injector } from "./injector.js";
-import type { Module, OnApplicationStart, OnApplicationStop, Provider, ProviderInstance, ProviderInstanceToken, ProviderToken } from "./interface/index.js";
+import type { Module, ProviderInstance, ProviderInstanceToken, ProviderToken } from "./interface/index.js";
 import { NestedSet, NestedWeakMap, NestedWeakSet } from "./map.js";
 import { type ModuleDefinitionStore } from "./definition.js";
 import { getTokenName, isDynamicClassProvider, isDynamicFactoryProvider, isDynamicProviderProvider, isDynamicValueProvider } from "./provider.js";
+import { OnApplicationStart, OnApplicationStop } from "./hooks.js";
 
 export type ApplicationState = 'created' | 'bootstrapped' | 'starting' | 'running' | 'stopping' | 'stopped';
-
-const applicationStopHook: keyof OnApplicationStop = 'onApplicationStop';
-const applicationStartHook: keyof OnApplicationStart = 'onApplicationStart';
 
 export interface InstanceStore {
   readonly value: Map<ProviderInstanceToken, ProviderInstance>;
@@ -346,13 +344,13 @@ export class Application {
 
     try {
       for (const [,,instanceToken] of this.enumerateInstances()) {
-        await this.runAsyncHook(instanceToken, applicationStartHook);
+        await this.runAsyncHook(instanceToken, OnApplicationStart);
         startedInstances.add(instanceToken);
       }
     } catch (e) {
       for (const [,,instanceToken] of this.enumerateInstances()) {
         if (!startedInstances.has(instanceToken)) continue;
-        await this.runAsyncHook(instanceToken, applicationStopHook);
+        await this.runAsyncHook(instanceToken, OnApplicationStop);
       }
       
       this.setApplicationState('stopped');
@@ -367,7 +365,7 @@ export class Application {
     this.setApplicationState('stopping');
 
     for (const [,,instanceToken] of this.enumerateInstances()) {
-      await this.runAsyncHook(instanceToken, applicationStopHook);
+      await this.runAsyncHook(instanceToken, OnApplicationStop);
     }
 
     this.setApplicationState('stopped');

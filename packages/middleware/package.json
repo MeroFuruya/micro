@@ -1,6 +1,6 @@
 {
-  "name": "@micro/events",
-  "description": "An event pipeline for micro-di",
+  "name": "@micro/middleware",
+  "description": "An middleware implementation for micro-di",
   "type": "module",
   "exports": {
     ".": {

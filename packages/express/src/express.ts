@@ -1,4 +1,4 @@
-import { defineModule, inject, Injector, InjectorStrategy, type Module, type OnApplicationStart, type OnApplicationStop } from '@micro/core';
+import { defineModule, inject, Injector, InjectorStrategy, type Module, type ApplicationStartHook, type ApplicationStopHook } from '@micro/core';
 import { injectLogger } from '@micro/logging';
 import express, { type Application, type RequestHandler } from 'express';
 import type { Server } from 'http';
@@ -28,7 +28,7 @@ function getDefaultOptions(options?: ExpressOptions) {
   } satisfies ExpressOptions;
 }
 
-export class ExpressServer implements OnApplicationStart, OnApplicationStop {
+export class ExpressServer implements ApplicationStartHook, ApplicationStopHook {
   private readonly injector = inject(Injector);
   private readonly logger = injectLogger({ optional: false });
   private readonly options = getDefaultOptions(inject<ExpressOptions>(EXPRESS_OPTIONS, {optional: true}));
