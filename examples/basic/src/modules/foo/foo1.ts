@@ -1,11 +1,11 @@
-import type { OnApplicationStart } from "@micro/core";
+import { OnApplicationStart, type ApplicationStartHook } from "@micro/core";
 
-export class Foo1Service implements OnApplicationStart {
+export class Foo1Service implements ApplicationStartHook {
   test() {
     console.log("Foo1Service.test");
   }
 
-  async onApplicationStart() {
+  async [OnApplicationStart]() {
     console.log("Foo1Service.onApplicationStart")
   }
 }

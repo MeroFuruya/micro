@@ -1,10 +1,10 @@
-import { inject, type OnApplicationStart } from "@micro/core";
+import { inject, OnApplicationStart, type ApplicationStartHook } from "@micro/core";
 import { Baz1Service } from "./baz1.js";
 
-export class Baz2Service implements OnApplicationStart {
+export class Baz2Service implements ApplicationStartHook {
   private readonly baz1service = inject(Baz1Service);
 
-  onApplicationStart() {
+  [OnApplicationStart]() {
     console.log("Baz2Service.onApplicationStart")
   }
 

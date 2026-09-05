@@ -1,4 +1,4 @@
-import { defineModule, inject, Injector, InjectorStrategy, type Module, type ApplicationStartHook, type ApplicationStopHook } from '@micro/core';
+import { defineModule, inject, Injector, InjectorStrategy, type Module, type ApplicationStartHook, type ApplicationStopHook, OnApplicationStart, OnApplicationStop } from '@micro/core';
 import { injectLogger } from '@micro/logging';
 import express, { type Application, type RequestHandler } from 'express';
 import type { Server } from 'http';
@@ -62,13 +62,13 @@ export class ExpressServer implements ApplicationStartHook, ApplicationStopHook 
   }
   
 
-  onApplicationStart() {
+  [OnApplicationStart]() {
     if (this.server !== undefined) return;
     this.logger.debug({ msg: `Started listening on http://${this.options.listen.host}:${this.options.listen.port}/`, port: this.options.listen.port, host: this.options.listen.host})
     this.server = this.app.listen(this.options.listen.port, this.options.listen.host);
   }
   
-  async onApplicationStop() {
+  async [OnApplicationStop]() {
     this.options.listen.host
     this.logger.debug({
       msg: "Express server requested to stop",

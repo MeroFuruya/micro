@@ -1,5 +1,7 @@
+import { OnApplicationStart } from "@micro/core";
+
 export class Baz1Service {
-  onApplicationStart() {
+  [OnApplicationStart]() {
     console.log("Baz1Service.onApplicationStart")
   }
 
