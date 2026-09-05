@@ -1,0 +1,17 @@
+{
+  "name": "@micro-example/http",
+  "private": true,
+  "scripts": {
+    "clean": "rm -rf ./dist",
+    "build": "tsc -b",
+    "start": "node ."
+  },
+  "dependencies": {
+    "@micro/core": "workspace:",
+    "@micro/express": "workspace:",
+    "@micro/logging": "workspace:",
+    "pino": "^10.3.1"
+  },
+  "type": "module",
+  "main": "dist/index.js"
+}

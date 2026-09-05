@@ -3,7 +3,11 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "clean": "pnpm run -r clean",
+    "build": "pnpm run -r build",
+    "start:example/http": "pnpm run --filter @micro-example/http start",
+    "dev:example/http": "pnpm run build && pnpm run start:example/http"
   },
   "repository": {
     "type": "git",

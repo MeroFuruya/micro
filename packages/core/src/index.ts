@@ -7,3 +7,4 @@ export * from './injector.js';
 export * from './definition.js';
 export * from './provider.js';
 export * from './map.js';
+export * from './util.js';

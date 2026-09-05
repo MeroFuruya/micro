@@ -1,5 +1,5 @@
 {
-  "name": "@micro/http",
+  "name": "@micro/express",
   "description": "An express wrapper for micro-di",
   "type": "module",
   "exports": {
@@ -13,7 +13,8 @@
     "clean": "rm -rf ./dist/ ./tsconfig.tsbuildinfo"
   },
   "dependencies": {
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "@micro/logging": "workspace:"
   },
   "peerDependencies": {
     "@micro/core": "workspace:"

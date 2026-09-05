@@ -30,6 +30,7 @@ export type InjectorStrategy =
 
 export interface InjectorOptions {
   strategies: InjectorStrategy[];
+  optional?: boolean;
 }
 
 export class Injector {
@@ -47,40 +48,60 @@ export class Injector {
     }
     
     if (strategy === InjectorStrategy.CurrentExported) {
-      const tokenExporter = this.application.getTokenExporter(this.module, token);
-      if (tokenExporter === null) return [];
-      const instances = this.application.getInstances(tokenExporter, token, this.instanceToken);
+      const instances: ProviderInstance[] = [];
+
+      for (const moduleExport of this.application.enumerateModuleExportTree(this.module)) {
+        if (!this.application.hasInstance(moduleExport, token)) continue;
+        const exportedInstances = this.application.getInstances(moduleExport, token, this.instanceToken);
+        instances.push(...exportedInstances);
+      }
+
       return instances;
     }
     
     if (strategy === InjectorStrategy.ImportedExported) {
+      const instances: ProviderInstance[] = [];
+
       const imports = this.application.moduleStore.importModule.values([this.module]);
       for (const moduleImport of imports) {
-        const tokenExporter = this.application.getTokenExporter(moduleImport, token);
-        if (tokenExporter === null) continue;
-        const instances = this.application.getInstances(tokenExporter, token, this.instanceToken);
-        return instances;
+        for (const moduleExport of this.application.enumerateModuleExportTree(moduleImport)) {
+          if (!this.application.hasInstance(moduleExport, token)) continue;
+          const exportedInstances = this.application.getInstances(moduleExport, token, this.instanceToken);
+          instances.push(...exportedInstances);
+        }
       }
+
+      return instances;
     }
     
     if (strategy === InjectorStrategy.AnyExported) {
-      // TODO: Implement
-      throw new Error("Not implemented");
+      const instances: ProviderInstance[] = [];
+
+      for (const moduleImport of this.application.enumerateModuleImportTreeGlobal(this.module)) {
+        if (!this.application.hasExportedInstance(moduleImport, token)) continue;
+        const exportedInstances = this.application.getInstances(moduleImport, token, this.instanceToken);
+        instances.push(...exportedInstances);
+      }
+      return instances;
     }
     
     if (strategy === InjectorStrategy.AnyProvided) {
-      // TODO: Implement
-      throw new Error("Not implemented");
+      const instances: ProviderInstance[] = [];
+
+      for (const moduleImport of this.application.enumerateModuleImportTreeGlobal(this.module)) {
+        if (!this.application.hasInstance(moduleImport, token)) continue;
+        const exportedInstances = this.application.getInstances(moduleImport, token, this.instanceToken);
+        instances.push(...exportedInstances);
+      }
+      return instances;
     }
 
     return [];
   }
 
 
-  get<T>(token: Type<T>, options: InjectorOptions): T;
-  get<T = unknown>(token: symbol, options: InjectorOptions): T;
-  get<T = unknown>(token: ProviderToken, options: InjectorOptions): T;
-  get<T>(token: ProviderToken, options: InjectorOptions): T {
+  get<T, O extends InjectorOptions = InjectorOptions>(token: ProviderToken<T>, options: O): O extends { optional: true } ? T | undefined : T;
+  get<T>(token: ProviderToken, options: InjectorOptions): T | undefined {
     for (const strategy of options.strategies) {
       if (strategy === InjectorStrategy.CurrentProvided) {
         if (!this.application.hasInstance(this.module, token)) continue;
@@ -88,30 +109,38 @@ export class Injector {
       }
       
       if (strategy === InjectorStrategy.CurrentExported) {
-        const tokenExporter = this.application.getTokenExporter(this.module, token);
-        if (tokenExporter === null) continue;
-        return this.application.getInstance(tokenExporter, token, this.instanceToken);
+        for (const moduleExport of this.application.enumerateModuleExportTree(this.module)) {
+          if (!this.application.hasExportedInstance(moduleExport, token)) continue;
+          return this.application.getInstance(moduleExport, token, this.instanceToken);
+        }
       }
       
       if (strategy === InjectorStrategy.ImportedExported) {
         const imports = this.application.moduleStore.importModule.values([this.module]);
         for (const moduleImport of imports) {
-          const tokenExporter = this.application.getTokenExporter(moduleImport, token);
-          if (tokenExporter === null) continue;
-          return this.application.getInstance(tokenExporter, token, this.instanceToken);
+          for (const moduleExport of this.application.enumerateModuleExportTree(moduleImport)) {
+            if (!this.application.hasExportedInstance(moduleExport, token)) continue;
+            return this.application.getInstance(moduleExport, token, this.instanceToken);
+          }
         }
       }
       
       if (strategy === InjectorStrategy.AnyExported) {
-        // TODO: Implement
-        throw new Error("Not implemented");
+        for (const moduleImport of this.application.enumerateModuleImportTreeGlobal(this.module)) {
+          if (!this.application.hasExportedInstance(moduleImport, token)) continue;
+          return this.application.getInstance(moduleImport, token, this.instanceToken);
+        }
       }
       
       if (strategy === InjectorStrategy.AnyProvided) {
-        // TODO: Implement
-        throw new Error("Not implemented");
+        for (const moduleImport of this.application.enumerateModuleImportTreeGlobal(this.module)) {
+          if (!this.application.hasInstance(moduleImport, token)) continue;
+          return this.application.getInstance(moduleImport, token, this.instanceToken);
+        }
       }
     }
+
+    if (options.optional === true) return undefined;
 
     throw new Error(`Instance for provider ${getTokenName(token)} could not be found.`)
   }

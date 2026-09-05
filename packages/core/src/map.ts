@@ -17,10 +17,19 @@ type LastKeyElement<K extends [...any[]]> =
       : LastKeyElement<KRest>
     : never;
 
-export class NestedMap<K extends [...any[]], V extends any> {
+export interface ReadonlyNestedMap<K extends [...any[]], V extends any> {
+  get(key: K): V | undefined;
+  has(key: PartialRecursiveKey<K> | K): boolean;
+  values(key: [] | PartialRecursiveKey<K> | K): V[];
+  size(key: [] | PartialRecursiveKey<K> | K): number;
+}
+
+export class NestedMap<K extends [...any[]], V extends any> implements ReadonlyNestedMap<K, V> {
   constructor(readonly depth: K['length']) {
     if (this.depth <= 0) throw new Error("Map must have at least depth 1");
   }
+
+  private _size = 0;
 
   readonly map = new Map() as RecursiveMapType<K, V>;
 
@@ -43,6 +52,8 @@ export class NestedMap<K extends [...any[]], V extends any> {
       if (!map.has(key[i])) map.set(key[i], new Map() as never);
       map = map.get(key[i])!;
     }
+
+    if (!map.has(key[this.depth - 1])) this._size++;
     map.set(key[this.depth - 1], value as never);
   }
 
@@ -66,6 +77,7 @@ export class NestedMap<K extends [...any[]], V extends any> {
       map = map.get(k)!;
     }
     map.delete(key[key.length - 1])
+    this._size--;
   }
 
   values(key: [] | PartialRecursiveKey<K> | K): V[] {
@@ -141,15 +153,72 @@ export class NestedMap<K extends [...any[]], V extends any> {
       }
     }
   }
+
+  size(key: [] | PartialRecursiveKey<K> | K): number {
+    if (key.length > this.depth) throw new Error("Key invalid");
+
+    if (key.length === 0) {
+      return this._size;
+    }
+
+    let map = this.map as Map<unknown, unknown>;
+
+    for (let i = 0; i < key.length; i++) {
+      const k = key[i];
+
+      if (!map.has(k)) return 0;
+
+      const value = map.get(k);
+
+      // Full key points directly to a value.
+      if (i === this.depth - 1) {
+        return 1;
+      }
+
+      map = value as Map<unknown, unknown>;
+    }
+
+    // Count all leaf values below the selected prefix.
+    let size = 0;
+
+    const stack: Array<{
+      map: Map<unknown, unknown>;
+      depth: number;
+    }> = [
+      {
+        map,
+        depth: key.length,
+      },
+    ];
+
+    while (stack.length > 0) {
+      const current = stack.pop()!;
+
+      if (current.depth === this.depth - 1) {
+        size += current.map.size;
+        continue;
+      }
+
+      for (const value of current.map.values()) {
+        stack.push({
+          map: value as Map<unknown, unknown>,
+          depth: current.depth + 1,
+        });
+      }
+    }
+
+    return size;
+  }
 }
 
-export interface ReadonlyNestedMap<K extends [...any[]], V extends any> {
-  get(key: K): V | undefined;
+export interface ReadonlyNestedSet<K extends [...any[]]> {
   has(key: PartialRecursiveKey<K> | K): boolean;
-  values(key: [] | PartialRecursiveKey<K> | K): V[];
+  values(key: [] | PartialRecursiveKey<K> | K): ReadonlyArray<LastKeyElement<K>>;
+  enumerate(key: [] | PartialRecursiveKey<K> | K): IterableIterator<K>;
+  size(key: [] | PartialRecursiveKey<K> | K): number;
 }
 
-export class NestedSet<K extends [...any[]]> {
+export class NestedSet<K extends [...any[]]> implements ReadonlyNestedSet<K> {
   constructor(readonly depth: K['length']) {
     if (this.depth < 0) throw new Error("Set must have at least depth 1");
     this.map = new NestedMap<K, LastKeyElement<K>>(this.depth);
@@ -176,13 +245,11 @@ export class NestedSet<K extends [...any[]]> {
   enumerate(key: [] | PartialRecursiveKey<K> | K): IterableIterator<K> {
     return this.map.keys(key);
   }
-}
 
-export interface ReadonlyNestedSet<K extends [...any[]]> {
-  has(key: PartialRecursiveKey<K> | K): boolean;
-  values(key: [] | PartialRecursiveKey<K> | K): ReadonlyArray<LastKeyElement<K>>;
+  size(key: [] | PartialRecursiveKey<K> | K): number {
+    return this.map.size(key);
+  }
 }
-
 
 type RecursiveWeakMapType<K extends [...WeakKey[]], V extends any> =
   K extends [infer _K extends WeakKey, ...infer K1 extends WeakKey[]]
@@ -191,7 +258,12 @@ type RecursiveWeakMapType<K extends [...WeakKey[]], V extends any> =
         : WeakMap<_K, RecursiveWeakMapType<K1, V>>
           : never;
 
-export class NestedWeakMap<K extends [...WeakKey[]], V extends any> {
+export interface ReadonlyNestedWeakMap<K extends [...WeakKey[]], V extends any> {
+  get(key: K): V | undefined;
+  has(key: PartialRecursiveKey<K> | K): boolean;
+}
+
+export class NestedWeakMap<K extends [...WeakKey[]], V extends any> implements ReadonlyNestedWeakMap<K, V> {
   constructor(readonly depth: K['length']) {
     if (this.depth <= 0) throw new Error("Map must have at least depth 1");
   }
@@ -243,12 +315,11 @@ export class NestedWeakMap<K extends [...WeakKey[]], V extends any> {
   }
 }
 
-export interface ReadonlyNestedWeakMap<K extends [...WeakKey[]], V extends any> {
-  get(key: K): V | undefined;
+export interface ReadonlyNestedWeakSet<K extends [...WeakKey[]]> {
   has(key: PartialRecursiveKey<K> | K): boolean;
 }
 
-export class NestedWeakSet<K extends [...WeakKey[]]> {
+export class NestedWeakSet<K extends [...WeakKey[]]> implements ReadonlyNestedWeakSet<K> {
   constructor(readonly depth: K['length']) {
     if (this.depth < 0) throw new Error("Set must have at least depth 1");
     this.map = new NestedWeakMap<K, any>(this.depth);
@@ -269,7 +340,5 @@ export class NestedWeakSet<K extends [...WeakKey[]]> {
   }
 }
 
-export interface ReadonlyNestedWeakSet<K extends [...WeakKey[]]> {
-  has(key: PartialRecursiveKey<K> | K): boolean;
-}
+
 
