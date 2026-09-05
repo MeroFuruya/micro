@@ -4,7 +4,7 @@ export type Module = symbol;
 
 export interface ModuleDefinition {
   name: string;
-  import?: Module[];
-  provide?: Provider[];
-  export?: (Module | ProviderToken)[];
+  import?: ReadonlyArray<Module>;
+  provide?: ReadonlyArray<Provider>;
+  export?: ReadonlyArray<Module | ProviderToken>;
 }

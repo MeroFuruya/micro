@@ -11,6 +11,5 @@
   "references": [
     { "path": "../core" },
     { "path": "../logging" },
-    { "path": "../context" },
   ]
 }

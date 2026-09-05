@@ -1,6 +1,6 @@
 {
-  "name": "@micro/middleware",
-  "description": "An middleware implementation for micro-di",
+  "name": "@micro/context",
+  "description": "A go-style context implementation used in micro-di",
   "type": "module",
   "exports": {
     ".": {
@@ -12,10 +12,7 @@
   "scripts": {
     "clean": "rm -rf ./dist/ ./tsconfig.tsbuildinfo"
   },
-  "dependencies": {
-    "@micro/context": "workspace:",
-    "@micro/logging": "workspace:"
-  },
+  "dependencies": {},
   "peerDependencies": {
     "@micro/core": "workspace:"
   },

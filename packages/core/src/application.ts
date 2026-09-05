@@ -189,18 +189,20 @@ export class Application {
     throw new Error("Could not instantiate provider");
   }
 
-  getInstances(module: Module, token: ProviderToken, forInstance: ProviderInstanceToken): ReadonlyArray<ProviderInstance> {
+  *getInstances(module: Module, token: ProviderToken, forInstance: ProviderInstanceToken): IterableIterator<ProviderInstance> {
     this.addInstanceDependency(forInstance, module, token);
 
     if (this.instanceStore.provider.has([module, token])) {
-      const instances = this.instanceStore.provider.values([module, token]);
-      return instances.map((instance) => this.instanceStore.value.get(instance)!);
+      for (const instance of this.instanceStore.provider.values([module, token])) {
+        yield this.instanceStore.value.get(instance);
+      }
     }
 
     if (this.hasModuleProvider(module, token)) {
       this.bootstrapProvider(module, token);
-      const instances = this.instanceStore.provider.values([module, token]);
-      return instances.map((instance) => this.instanceStore.value.get(instance)!);
+      for (const instance of this.instanceStore.provider.values([module, token])) {
+        yield this.instanceStore.value.get(instance);
+      }
     }
 
     throw new Error(`Module ${this.moduleStore.name.get(module)} does not provide ${getTokenName(token)}`)

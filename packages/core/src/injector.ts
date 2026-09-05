@@ -40,63 +40,42 @@ export class Injector {
     readonly instanceToken: ProviderInstanceToken,
   ) {}
 
-  getAll(token: ProviderToken, strategy: InjectorStrategy): ReadonlyArray<ProviderInstance> {
+  *getAll(token: ProviderToken, strategy: InjectorStrategy): IterableIterator<ProviderInstance> {
     if (strategy === InjectorStrategy.CurrentProvided) {
-      if (!this.application.hasInstance(this.module, token)) return [];
-      const instances = this.application.getInstances(this.module, token, this.instanceToken);
-      return instances;
+      if (!this.application.hasInstance(this.module, token)) return;
+      yield* this.application.getInstances(this.module, token, this.instanceToken);
     }
     
     if (strategy === InjectorStrategy.CurrentExported) {
-      const instances: ProviderInstance[] = [];
-
       for (const moduleExport of this.application.enumerateModuleExportTree(this.module)) {
         if (!this.application.hasInstance(moduleExport, token)) continue;
-        const exportedInstances = this.application.getInstances(moduleExport, token, this.instanceToken);
-        instances.push(...exportedInstances);
+        yield* this.application.getInstances(moduleExport, token, this.instanceToken);
       }
-
-      return instances;
     }
     
     if (strategy === InjectorStrategy.ImportedExported) {
-      const instances: ProviderInstance[] = [];
-
       const imports = this.application.moduleStore.importModule.values([this.module]);
       for (const moduleImport of imports) {
         for (const moduleExport of this.application.enumerateModuleExportTree(moduleImport)) {
           if (!this.application.hasInstance(moduleExport, token)) continue;
-          const exportedInstances = this.application.getInstances(moduleExport, token, this.instanceToken);
-          instances.push(...exportedInstances);
+          yield* this.application.getInstances(moduleExport, token, this.instanceToken);
         }
       }
-
-      return instances;
     }
     
     if (strategy === InjectorStrategy.AnyExported) {
-      const instances: ProviderInstance[] = [];
-
       for (const moduleImport of this.application.enumerateModuleImportTreeGlobal(this.module)) {
         if (!this.application.hasExportedInstance(moduleImport, token)) continue;
-        const exportedInstances = this.application.getInstances(moduleImport, token, this.instanceToken);
-        instances.push(...exportedInstances);
+        yield* this.application.getInstances(moduleImport, token, this.instanceToken);
       }
-      return instances;
     }
     
     if (strategy === InjectorStrategy.AnyProvided) {
-      const instances: ProviderInstance[] = [];
-
       for (const moduleImport of this.application.enumerateModuleImportTreeGlobal(this.module)) {
         if (!this.application.hasInstance(moduleImport, token)) continue;
-        const exportedInstances = this.application.getInstances(moduleImport, token, this.instanceToken);
-        instances.push(...exportedInstances);
+        yield* this.application.getInstances(moduleImport, token, this.instanceToken);
       }
-      return instances;
     }
-
-    return [];
   }
 
 

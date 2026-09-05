@@ -33,6 +33,16 @@ importers:
         specifier: ^10.3.1
         version: 10.3.1
 
+  packages/context:
+    dependencies:
+      '@micro/core':
+        specifier: 'workspace:'
+        version: link:../core
+    devDependencies:
+      '@types/express':
+        specifier: ^5.0.6
+        version: 5.0.6
+
   packages/core: {}
 
   packages/express:
@@ -59,9 +69,15 @@ importers:
 
   packages/middleware:
     dependencies:
+      '@micro/context':
+        specifier: 'workspace:'
+        version: link:../context
       '@micro/core':
         specifier: 'workspace:'
         version: link:../core
+      '@micro/logging':
+        specifier: 'workspace:'
+        version: link:../logging
     devDependencies:
       '@types/express':
         specifier: ^5.0.6
