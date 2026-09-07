@@ -3,7 +3,7 @@ import { injectLogger } from '@micro/logging';
 import express, { type Application, type RequestHandler, type Request, type Response } from 'express';
 import type { Server } from 'http';
 import { MiddlewareHelper } from '@micro/middleware';
-import { createTypedContextHelpers, EmptyContext } from '@micro/context';
+import { createTypedContextHelpers, EmptyContext, type Context } from '@micro/context';
 
 export const EXPRESS_OPTIONS = Symbol('EXPRESS_OPTIONS')
 export const EXPRESS_HANDLER = Symbol('EXPRESS_HANDLER')
@@ -32,6 +32,10 @@ function getDefaultOptions(options?: ExpressOptions) {
 
 export const [contextSetExpressRequest, contextGetExpressRequest, contextGetExpressRequestOr, contextHasExpressRequest] = createTypedContextHelpers<Request<any, any, any, any>>("express:request");
 export const [contextSetExpressResponse, contextGetExpressResponse, contextGetExpressResponseOr, contextHasExpressResponse] = createTypedContextHelpers<Response>("express:response");
+
+export function contextHasExpress(context: Context) {
+  return contextHasExpressRequest(context) && contextHasExpressResponse(context);
+}
 
 export class ExpressServer implements ApplicationStartHook, ApplicationStopHook {
   private readonly injector = inject(Injector);

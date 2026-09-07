@@ -1,8 +1,9 @@
 import { defineModule } from "@micro/core";
 import { ExpressModule } from "@micro/express";
 import { LoggerModule } from "@micro/logging";
-import { FooModule } from "./foo/index.js";
 import { pino } from "pino";
+import { MiddlewareModule } from "@micro/middleware";
+import { BananaModule } from "./banana/index.js";
 
 
 const pinoInstance = pino({ level: 'trace'});
@@ -12,7 +13,6 @@ export const AppModule = defineModule({
   name: "AppModule",
   import: [
     LoggerModule({instance: pinoInstance}),
-    FooModule,
-    ExpressModule({import: []})
+    ExpressModule({import: [MiddlewareModule([BananaModule])]})
   ],
 })

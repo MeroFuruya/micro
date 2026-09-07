@@ -1,4 +1,4 @@
-import { type Context } from '@micro/context';
+import { debugContext, type Context } from '@micro/context';
 import { defineModule, inject, Injector, InjectorStrategy, type Module, type ProviderToken } from '@micro/core';
 import { injectLogger } from '@micro/logging';
 
@@ -18,7 +18,10 @@ export class MiddlewareHelper {
   private readonly injector = inject(Injector);
   private readonly logger = injectLogger();
 
+  private readonly middlewares = [...this.injector.getAll(MIDDLEWARE, InjectorStrategy.ImportedExported)].toReversed();
+
   async handle(context: Context, next?: (...args: any) => unknown | Promise<unknown>): Promise<unknown> {
+    console.log(this.middlewares);
     let nextHandler: MiddlewareNextHandler;
     if (next !== undefined) {
       nextHandler = async () => next!();
@@ -26,14 +29,15 @@ export class MiddlewareHelper {
       nextHandler = (() => new Promise((resolve) => resolve(undefined)));
     }
 
-    for (const middleware of this.injector.getAll(MIDDLEWARE, InjectorStrategy.ImportedExported)) {
+    for (const middleware of this.middlewares) {
       // TODO: Don't just silently skip
       if (typeof middleware !== 'object') continue;
       if (middleware === null) continue;
       if (Object.hasOwn(middleware, MiddlewareHook)) continue;
+      const previousHandler = nextHandler;
 
       nextHandler = function (context) {
-        return (middleware as Middleware)[MiddlewareHook](context, nextHandler);
+        return (middleware as Middleware)[MiddlewareHook](context, previousHandler);
       }
     }
     return nextHandler(context);

@@ -131,7 +131,7 @@ export class Application {
   private readonly currentlyBootstrappingProvider = new NestedWeakSet<[Module, ProviderToken]>(2);
   bootstrapProvider(module: Module, token: ProviderToken) {
     if (this.instanceStore.provider.has([module, token]))
-      throw new Error("Providers cannot be bootstrapped twice");
+      throw new Error(`Error while bootstrapping ${getTokenName(token)} of ${this.moduleStore.name.get(module)}: Providers cannot be bootstrapped twice`);
 
     if (this.currentlyBootstrappingProvider.has([module, token])) {
       throw new Error(`Recursive dependency inside ${this.moduleStore.name.get(module)}`)
@@ -191,18 +191,21 @@ export class Application {
 
   *getInstances(module: Module, token: ProviderToken, forInstance: ProviderInstanceToken): IterableIterator<ProviderInstance> {
     this.addInstanceDependency(forInstance, module, token);
-
+    
     if (this.instanceStore.provider.has([module, token])) {
+      this.instanceStore.priority
       for (const instance of this.instanceStore.provider.values([module, token])) {
         yield this.instanceStore.value.get(instance);
       }
+      return;
     }
-
+    
     if (this.hasModuleProvider(module, token)) {
       this.bootstrapProvider(module, token);
       for (const instance of this.instanceStore.provider.values([module, token])) {
         yield this.instanceStore.value.get(instance);
       }
+      return;
     }
 
     throw new Error(`Module ${this.moduleStore.name.get(module)} does not provide ${getTokenName(token)}`)

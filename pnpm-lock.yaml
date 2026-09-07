@@ -20,6 +20,9 @@ importers:
 
   examples/http:
     dependencies:
+      '@micro/context':
+        specifier: 'workspace:'
+        version: link:../../packages/context
       '@micro/core':
         specifier: 'workspace:'
         version: link:../../packages/core
@@ -29,6 +32,9 @@ importers:
       '@micro/logging':
         specifier: 'workspace:'
         version: link:../../packages/logging
+      '@micro/middleware':
+        specifier: 'workspace:'
+        version: link:../../packages/middleware
       pino:
         specifier: ^10.3.1
         version: 10.3.1

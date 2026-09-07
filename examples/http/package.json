@@ -9,7 +9,9 @@
   "dependencies": {
     "@micro/core": "workspace:",
     "@micro/express": "workspace:",
+    "@micro/middleware": "workspace:",
     "@micro/logging": "workspace:",
+    "@micro/context": "workspace:",
     "pino": "^10.3.1"
   },
   "type": "module",

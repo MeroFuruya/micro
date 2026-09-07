@@ -10,5 +10,8 @@
   "references": [
     { "path": "../../packages/core" },
     { "path": "../../packages/express" },
+    { "path": "../../packages/logging" },
+    { "path": "../../packages/middleware" },
+    { "path": "../../packages/context" },
   ]
 }
