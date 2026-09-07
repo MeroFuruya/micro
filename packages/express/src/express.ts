@@ -1,7 +1,9 @@
 import { defineModule, inject, Injector, InjectorStrategy, type Module, type ApplicationStartHook, type ApplicationStopHook, OnApplicationStart, OnApplicationStop } from '@micro/core';
 import { injectLogger } from '@micro/logging';
-import express, { type Application, type RequestHandler } from 'express';
+import express, { type Application, type RequestHandler, type Request, type Response } from 'express';
 import type { Server } from 'http';
+import { MiddlewareHelper } from '@micro/middleware';
+import { createTypedContextHelpers, EmptyContext } from '@micro/context';
 
 export const EXPRESS_OPTIONS = Symbol('EXPRESS_OPTIONS')
 export const EXPRESS_HANDLER = Symbol('EXPRESS_HANDLER')
@@ -28,11 +30,15 @@ function getDefaultOptions(options?: ExpressOptions) {
   } satisfies ExpressOptions;
 }
 
+export const [contextSetExpressRequest, contextGetExpressRequest, contextGetExpressRequestOr, contextHasExpressRequest] = createTypedContextHelpers<Request<any, any, any, any>>("express:request");
+export const [contextSetExpressResponse, contextGetExpressResponse, contextGetExpressResponseOr, contextHasExpressResponse] = createTypedContextHelpers<Response>("express:response");
+
 export class ExpressServer implements ApplicationStartHook, ApplicationStopHook {
   private readonly injector = inject(Injector);
   private readonly logger = injectLogger({ optional: false });
   private readonly options = getDefaultOptions(inject<ExpressOptions>(EXPRESS_OPTIONS, {optional: true}));
-  
+  private readonly middlewareHelper = inject(MiddlewareHelper, {optional: true});
+
   private app: Application;
   private server?: Server;
 
@@ -45,9 +51,18 @@ export class ExpressServer implements ApplicationStartHook, ApplicationStopHook 
       }
     }
 
-    const middlewares = this.injector.getAll(EXPRESS_HANDLER, InjectorStrategy.ImportedExported);
-    for (const middleware of middlewares) {
-      
+    if (this.middlewareHelper !== undefined) {
+      const handler: RequestHandler = async(req, res, next) => {
+        let context = EmptyContext;
+        context = contextSetExpressRequest(context, req);
+        context = contextSetExpressResponse(context, res);
+        try {
+          return this.middlewareHelper!.handle(context, next);
+        } catch(err) {
+          next(err);
+        }
+      }
+      app.use(handler);
     }
 
     this.app = app;

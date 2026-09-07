@@ -130,7 +130,7 @@ export function createContextHelpers<V>(key: ContextKey<V>) {
   ] as const;
 }
 
-export function createTypedContextGetterAndSetter<V>(name?: string) {
+export function createTypedContextHelpers<V>(name?: string) {
   const key = createTypedContextKey<V>(name);
   return createContextHelpers(key);
 }

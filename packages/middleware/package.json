@@ -13,11 +13,11 @@
     "clean": "rm -rf ./dist/ ./tsconfig.tsbuildinfo"
   },
   "dependencies": {
-    "@micro/context": "workspace:",
-    "@micro/logging": "workspace:"
   },
   "peerDependencies": {
-    "@micro/core": "workspace:"
+    "@micro/core": "workspace:",
+    "@micro/context": "workspace:",
+    "@micro/logging": "workspace:"
   },
   "devDependencies": {
     "@types/express": "^5.0.6"

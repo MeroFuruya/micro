@@ -11,5 +11,7 @@
   "references": [
     { "path": "../core" },
     { "path": "../logging" },
+    { "path": "../middleware" },
+    { "path": "../context" },
   ]
 }
