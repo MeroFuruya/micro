@@ -137,6 +137,7 @@ export class Application {
       throw new Error(`Recursive dependency inside ${this.moduleStore.name.get(module)}`)
     }
     
+    // A class provider can only be instantiated once, since it can only be provided provided once - it itself is the "symbol"
     if (typeof token === 'function' && this.moduleStore.provideClass.has([module, token])) {
       this.currentlyBootstrappingProvider.add([module, token]);
       try {
@@ -148,52 +149,54 @@ export class Application {
       } finally {
         this.currentlyBootstrappingProvider.delete([module, token]);
       }
-      return;
     }
 
+    // A Dynamic provider can be instantiated multiple times, since it can be provided multiple times
     if (this.moduleStore.provideDynamic.has([module, token])) {
       this.currentlyBootstrappingProvider.add([module, token]);
 
       try {
-        const provider = this.moduleStore.provideDynamic.get([module, token])!
+        const providers = this.moduleStore.provideDynamic.values([module, token])!
 
-        if (isDynamicProviderProvider(provider)) throw new Error("Cannot instantiate Dynamic ProviderProviders");
+        for (const provider of providers) {
+          if (isDynamicProviderProvider(provider)) throw new Error("Cannot instantiate Dynamic ProviderProviders");
+  
+          const instanceToken = Symbol(`Instance.${this.moduleStore.name.get(module)}.${getTokenName(token)}`);
+  
+          if (isDynamicValueProvider(provider)) {
+            this.setInstance(module, token, instanceToken, provider.useValue);
+            continue;
+          }
+          
+          if (isDynamicClassProvider(provider)) {
+            const injector = this.getInjector(module, instanceToken);
+            const value = runInInjectionContext(injector, () => new provider.useClass())
+            this.setInstance(module, token, instanceToken, value);
+            continue;
+          }
+          
+          if (isDynamicFactoryProvider(provider)) {
+            const injector = this.getInjector(module, instanceToken);
+            const value = runInInjectionContext(injector, () => provider.useFactory())
+            this.setInstance(module, token, instanceToken, value);
+            continue;
+          }
 
-        const instanceToken = Symbol(`Instance.${this.moduleStore.name.get(module)}.${getTokenName(token)}`);
-
-        if (isDynamicValueProvider(provider)) {
-          this.setInstance(module, token, instanceToken, provider.useValue);
-          return;
+          throw new Error(`Could not instantiate Dynamic Provider ${getTokenName(token)} in Module ${this.moduleStore.name.get(module)}`)
         }
-        
-        if (isDynamicClassProvider(provider)) {
-          const injector = this.getInjector(module, instanceToken);
-          const value = runInInjectionContext(injector, () => new provider.useClass())
-          this.setInstance(module, token, instanceToken, value);
-          return;
-        }
-        
-        if (isDynamicFactoryProvider(provider)) {
-          const injector = this.getInjector(module, instanceToken);
-          const value = runInInjectionContext(injector, () => provider.useFactory())
-          this.setInstance(module, token, instanceToken, value);
-          return;
-        }
-
-        throw new Error(`Could not instantiate Dynamic Provider ${getTokenName(token)} in Module ${this.moduleStore.name.get(module)}`)
       } finally {
         this.currentlyBootstrappingProvider.delete([module, token]);
       }
     }
 
-    throw new Error("Could not instantiate provider");
+    if (!this.instanceStore.provider.has([module, token]))
+      throw new Error("Could not instantiate provider");
   }
 
   *getInstances(module: Module, token: ProviderToken, forInstance: ProviderInstanceToken): IterableIterator<ProviderInstance> {
     this.addInstanceDependency(forInstance, module, token);
-    
+
     if (this.instanceStore.provider.has([module, token])) {
-      this.instanceStore.priority
       for (const instance of this.instanceStore.provider.values([module, token])) {
         yield this.instanceStore.value.get(instance);
       }

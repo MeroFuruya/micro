@@ -14,7 +14,7 @@ export function getTokenName(token: ProviderToken): string {
   }
 
   if (typeof token === 'function') {
-    return token.name || '<anonymous>';
+    return token.name ?? '<anonymous>';
   }
 
   return String(token);

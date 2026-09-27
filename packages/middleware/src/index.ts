@@ -1,4 +1,4 @@
-import { debugContext, type Context } from '@micro/context';
+import { type Context } from '@micro/context';
 import { defineModule, inject, Injector, InjectorStrategy, type Module, type ProviderToken } from '@micro/core';
 import { injectLogger } from '@micro/logging';
 
@@ -18,28 +18,39 @@ export class MiddlewareHelper {
   private readonly injector = inject(Injector);
   private readonly logger = injectLogger();
 
-  private readonly middlewares = [...this.injector.getAll(MIDDLEWARE, InjectorStrategy.ImportedExported)].toReversed();
+  private readonly middlewares = [...this.injector.getAll(MIDDLEWARE, InjectorStrategy.ImportedExported)].reverse();
 
   async handle(context: Context, next?: (...args: any) => unknown | Promise<unknown>): Promise<unknown> {
-    console.log(this.middlewares);
     let nextHandler: MiddlewareNextHandler;
     if (next !== undefined) {
       nextHandler = async () => next!();
     } else {
-      nextHandler = (() => new Promise((resolve) => resolve(undefined)));
+      nextHandler = (() => new Promise((resolve) => resolve(undefined))); // noop
     }
 
     for (const middleware of this.middlewares) {
       // TODO: Don't just silently skip
-      if (typeof middleware !== 'object') continue;
-      if (middleware === null) continue;
-      if (Object.hasOwn(middleware, MiddlewareHook)) continue;
+      if (typeof middleware !== 'object') {
+        this.logger.warn({ msg: 'Middleware instance is not an object, skipping', middleware });
+        continue;
+      }
+      
+      if (middleware === null) {
+        this.logger.warn({ msg: 'Middleware instance is of type null, skipping', middleware });
+        continue;
+      }
+      
+      if (Object.hasOwn(middleware, MiddlewareHook)) {
+        this.logger.warn({ msg: 'Middleware does not implement MiddlewareHook, skipping', name: middleware.constructor.name });
+        continue;
+      }
       const previousHandler = nextHandler;
 
       nextHandler = function (context) {
         return (middleware as Middleware)[MiddlewareHook](context, previousHandler);
       }
     }
+
     return nextHandler(context);
   }
 }

@@ -1,4 +1,4 @@
-import { defineModule, getTokenName, inject, Injector, InjectorStrategy } from '@micro/core';
+import { defineModule, inject, Injector, InjectorStrategy } from '@micro/core';
 
 export type Level = "fatal" | "error" | "warn" | "info" | "debug" | "trace";
 export interface LogFn {

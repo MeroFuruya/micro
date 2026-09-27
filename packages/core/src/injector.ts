@@ -58,7 +58,7 @@ export class Injector {
       for (const moduleImport of imports) {
         for (const moduleExport of this.application.enumerateModuleExportTree(moduleImport)) {
           if (!this.application.hasInstance(moduleExport, token)) continue;
-          yield* this.application.getInstances(moduleExport, token, this.instanceToken);
+          yield* this.application.getInstances(moduleExport, token, this.instanceToken)
         }
       }
     }

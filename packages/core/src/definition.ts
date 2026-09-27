@@ -26,7 +26,7 @@ export interface ModuleDefinitionStore {
   readonly name: ReadonlyMap<Module, string>;
   readonly importModule: ReadonlyNestedSet<[Module, Module]>;
   readonly provideClass: ReadonlyNestedSet<[Module, ClassProvider]>;
-  readonly provideDynamic: ReadonlyNestedMap<[Module, ProviderToken], DynamicProvider>;
+  readonly provideDynamic: ReadonlyNestedSet<[Module, ProviderToken, DynamicProvider]>;
   readonly exportProvider: ReadonlyNestedSet<[Module, ProviderToken]>;
   readonly exportModule: ReadonlyNestedSet<[Module, Module]>;
 }
@@ -39,7 +39,7 @@ export function buildModuleDefinitionStore(
   const nameMap = new Map<Module, string>();
   const importModuleSet = new NestedSet<[Module, Module]>(2);
   const provideClassSet = new NestedSet<[Module, ClassProvider]>(2);
-  const provideDynamicMap = new NestedMap<[Module, ProviderToken], DynamicProvider>(2);
+  const provideDynamicMap = new NestedSet<[Module, ProviderToken, DynamicProvider]>(3);
   const exportProviderSet = new NestedSet<[Module, ProviderToken]>(2);
   const exportModuleSet = new NestedSet<[Module, Module]>(2);
 
@@ -75,7 +75,7 @@ export function buildModuleDefinitionStore(
     // Providers
     for (const [providerIndex, provider] of (moduleDefinition.provide ?? []).entries()) {
       if (isDynamicProvider(provider)) {
-        provideDynamicMap.set([module, provider.for], provider);
+        provideDynamicMap.add([module, provider.for, provider]);
         continue;
       }
       
