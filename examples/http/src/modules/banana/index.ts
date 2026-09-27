@@ -9,7 +9,7 @@ export class Banana implements Middleware {
       const request = contextGetExpressRequest(context);
       const response = contextGetExpressResponse(context);
       if (request.url === '/ping') {
-        response.write("pong");
+        response.write("pong\n");
         await next(context);
         if (response.headersSent) {
           response.send()
@@ -19,43 +19,30 @@ export class Banana implements Middleware {
   }
 }
 
-const BananaModule = defineModule({
-  name: 'banana',
-  provide: [
-    {
-      for: MIDDLEWARE,
-      useClass: Banana,
-    },
-  ],
-  export: [MIDDLEWARE],
-})
-
 export class Banana2 implements Middleware {
   async [MiddlewareHook](context: Context, next: MiddlewareNextHandler) {
     if (contextHasExpress(context)) {
       const request = contextGetExpressRequest(context);
       const response = contextGetExpressResponse(context);
       if (request.url === '/ping') {
-        response.write("pong2");
+        response.write("pong2\n");
         next(context);
       }
     }
   }
 }
 
-const Banana2Module = defineModule({
-  name: 'banana2',
+export const BananaModule = defineModule({
+  name: 'banana',
   provide: [
+    {
+      for: MIDDLEWARE,
+      useClass: Banana,
+    },
     {
       for: MIDDLEWARE,
       useClass: Banana2,
     },
   ],
   export: [MIDDLEWARE],
-})
-
-export const MyMiddlewareModule = defineModule({
-  name: 'banana',
-  import: [BananaModule, Banana2Module],
-  export: [Banana2Module, BananaModule],
 })

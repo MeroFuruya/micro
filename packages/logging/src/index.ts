@@ -80,7 +80,7 @@ export interface LoggerModuleOptions {
 
 export function LoggerModule(options: LoggerModuleOptions) {
   return defineModule({
-    name: 'PinoModule',
+    name: 'LoggerModule',
     provide: [
       {
         for: LOGGER,
